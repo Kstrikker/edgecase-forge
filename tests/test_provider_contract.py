@@ -111,3 +111,39 @@ def test_exhausted_rate_limit_raises_after_bounded_retries() -> None:
             [Message("user", "scan")], BaselineAnalysis
         )
     assert calls == 3
+
+
+def test_accepts_valid_json_followed_by_provider_commentary() -> None:
+    content = (
+        '{"summary":"ok","findings":[],"generated_test_code":""}'
+        "\nI corrected the requested JSON."
+    )
+    parsed, _ = _provider(lambda request: _response(content)).generate_json(
+        [Message("user", "scan")], BaselineAnalysis
+    )
+    assert parsed.summary == "ok"
+
+
+def test_normalizes_single_evidence_string_to_list() -> None:
+    content = json.dumps(
+        {
+            "summary": "ok",
+            "findings": [
+                {
+                    "title": "Example",
+                    "severity": "high",
+                    "endpoint": "POST /orders",
+                    "claim": "Example claim",
+                    "evidence": "one source observation",
+                    "test_file": "test_example.py",
+                    "test_name": "test_example",
+                    "reproduced": False,
+                }
+            ],
+            "generated_test_code": "",
+        }
+    )
+    parsed, _ = _provider(lambda request: _response(content)).generate_json(
+        [Message("user", "scan")], BaselineAnalysis
+    )
+    assert parsed.findings[0].evidence == ["one source observation"]

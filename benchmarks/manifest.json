@@ -1,5 +1,5 @@
 {
-  "benchmark_version": "flashcart-v1",
+  "benchmark_version": "flashcart-v1.0.1",
   "status": "frozen",
   "clean_control": "C00",
   "primary_metric": "correctly_killed_mutants / 10",

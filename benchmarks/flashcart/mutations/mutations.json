@@ -16,7 +16,7 @@
     },
     {
       "find": "    if existing_order_id:\n        return STATE.orders[existing_order_id]",
-      "replace": "    if existing_order_id:\n        return STATE.orders[existing_order_id]\n    import time\n    time.sleep(0.02)"
+      "replace": "    if existing_order_id:\n        return STATE.orders[existing_order_id]\n    import time\n    time.sleep(0.1)"
     }
   ],
   "M03": [

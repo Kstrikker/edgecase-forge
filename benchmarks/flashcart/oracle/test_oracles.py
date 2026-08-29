@@ -51,38 +51,46 @@ def signed_webhook(module, payload: dict, *, valid: bool = True) -> tuple[bytes,
 
 
 def check_m01(module) -> bool:
-    client = TestClient(module.app)
-    with ThreadPoolExecutor(max_workers=20) as pool:
-        responses = list(
-            pool.map(
-                lambda i: client.post(
-                    "/orders",
-                    headers=headers(key=f"race-{i}"),
-                    json={"product_id": 1, "quantity": 1},
-                ),
-                range(20),
+    for attempt in range(3):
+        module.reset_state()
+        client = TestClient(module.app)
+        with ThreadPoolExecutor(max_workers=20) as pool:
+            responses = list(
+                pool.map(
+                    lambda i: client.post(
+                        "/orders",
+                        headers=headers(key=f"race-{attempt}-{i}"),
+                        json={"product_id": 1, "quantity": 1},
+                    ),
+                    range(20),
+                )
             )
-        )
-    successes = sum(response.status_code == 201 for response in responses)
-    return successes <= 5 and module.evaluator_snapshot()["stock"] >= 0
+        successes = sum(response.status_code == 201 for response in responses)
+        if successes > 5 or module.evaluator_snapshot()["stock"] < 0:
+            return False
+    return True
 
 
 def check_m02(module) -> bool:
-    client = TestClient(module.app)
-    with ThreadPoolExecutor(max_workers=10) as pool:
-        responses = list(
-            pool.map(
-                lambda _: client.post(
-                    "/orders",
-                    headers=headers(key="same-key"),
-                    json={"product_id": 1, "quantity": 1},
-                ),
-                range(10),
+    for attempt in range(3):
+        module.reset_state()
+        client = TestClient(module.app)
+        with ThreadPoolExecutor(max_workers=10) as pool:
+            responses = list(
+                pool.map(
+                    lambda _: client.post(
+                        "/orders",
+                        headers=headers(key=f"same-key-{attempt}"),
+                        json={"product_id": 1, "quantity": 1},
+                    ),
+                    range(10),
+                )
             )
-        )
-    ids = {response.json().get("id") for response in responses if response.status_code == 201}
-    snapshot = module.evaluator_snapshot()
-    return len(ids) == 1 and len(snapshot["orders"]) == 1 and len(snapshot["charges"]) == 1
+        ids = {response.json().get("id") for response in responses if response.status_code == 201}
+        snapshot = module.evaluator_snapshot()
+        if len(ids) != 1 or len(snapshot["orders"]) != 1 or len(snapshot["charges"]) != 1:
+            return False
+    return True
 
 
 def check_m03(module) -> bool:
@@ -207,4 +215,3 @@ def test_clean_control_satisfies_every_oracle(case_id: str) -> None:
 @pytest.mark.parametrize("case_id", CASES)
 def test_each_mutant_violates_its_target_oracle(case_id: str) -> None:
     assert not CHECKS[case_id](load_case(case_id)), case_id
-

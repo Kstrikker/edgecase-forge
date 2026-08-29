@@ -11,6 +11,7 @@ from benchmarks.flashcart import build_all, export_agent_repo
 from edgecase_forge.baseline import BaselineScanner
 from edgecase_forge.baseline.executor import run_generated_pytest
 from edgecase_forge.llm.base import LLMProvider
+from edgecase_forge.llm.errors import ResponseParseError, ResponseValidationError
 
 CASE_IDS = ["C00", *(f"M{index:02d}" for index in range(1, 11))]
 
@@ -37,7 +38,7 @@ def run_flashcart_suite(
             suite_dir / "suite-config.json",
             {
                 "suite_id": suite_id,
-                "benchmark_version": "flashcart-v1",
+                "benchmark_version": "flashcart-v1.0.1",
                 "provider": provider.name,
                 "model": provider.model,
                 "repetitions": repetitions,
@@ -66,14 +67,40 @@ def run_flashcart_suite(
             with tempfile.TemporaryDirectory(prefix="edgecase-case-") as temporary:
                 temporary_root = Path(temporary)
                 agent_repo = export_agent_repo(case_id, temporary_root / "case-under-test")
-                run_dir = scanner.scan(
-                    repo=agent_repo,
-                    output_root=(
-                        suite_dir / "agent-runs" / f"run-{repetition:02d}" / case_id
-                    ),
-                    case_id=case_id,
-                    execute=False,
-                )
+                run_output = suite_dir / "agent-runs" / f"run-{repetition:02d}" / case_id
+                try:
+                    run_dir = scanner.scan(
+                        repo=agent_repo,
+                        output_root=run_output,
+                        case_id=case_id,
+                        execute=False,
+                    )
+                except (ResponseParseError, ResponseValidationError) as exc:
+                    evaluation = {
+                        "repetition": repetition,
+                        "case_id": case_id,
+                        "source_sha256": hashes[case_id],
+                        "run_directory": None,
+                        "status": "model_output_error",
+                        "error_type": type(exc).__name__,
+                        "error": str(exc)[:2000],
+                        "test_generated": False,
+                        "passes_clean": False,
+                        "fails_mutant": False,
+                        "candidate_kill": False,
+                        "confirmed_kill": False,
+                        "requires_invariant_adjudication": False,
+                        "clean_false_positive": False,
+                        "input_tokens": 0,
+                        "output_tokens": 0,
+                        "runtime_seconds": 0.0,
+                    }
+                    evaluations.append(evaluation)
+                    with progress_path.open("a", encoding="utf-8") as handle:
+                        handle.write(json.dumps(evaluation) + "\n")
+                    if request_delay_seconds:
+                        time.sleep(request_delay_seconds)
+                    continue
                 generated_test = run_dir / "generated_tests" / "test_generated_baseline.py"
                 generated = generated_test.exists()
                 clean_result = None
@@ -104,6 +131,7 @@ def run_flashcart_suite(
                     "case_id": case_id,
                     "source_sha256": hashes[case_id],
                     "run_directory": str(run_dir),
+                    "status": "completed",
                     "test_generated": generated,
                     "passes_clean": passes_clean,
                     "fails_mutant": fails_mutant,
@@ -136,7 +164,7 @@ def run_flashcart_suite(
     score_values = [item["score"] for item in repetition_scores]
     summary = {
         "suite_id": suite_id,
-        "benchmark_version": "flashcart-v1",
+        "benchmark_version": "flashcart-v1.0.1",
         "provider": provider.name,
         "model": provider.model,
         "repetitions": repetitions,
@@ -149,6 +177,9 @@ def run_flashcart_suite(
         "confirmed_mutation_score": 0.0,
         "clean_false_positives": sum(
             int(item["clean_false_positive"]) for item in evaluations
+        ),
+        "model_output_errors": sum(
+            int(item["status"] == "model_output_error") for item in evaluations
         ),
         "input_tokens": sum(item["input_tokens"] for item in evaluations),
         "output_tokens": sum(item["output_tokens"] for item in evaluations),

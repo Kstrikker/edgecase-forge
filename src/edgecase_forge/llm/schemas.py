@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class Finding(BaseModel):
@@ -15,6 +15,13 @@ class Finding(BaseModel):
     test_name: str = Field(description="Generated pytest function name")
     reproduced: bool = False
 
+    @field_validator("evidence", mode="before")
+    @classmethod
+    def normalize_evidence(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [value]
+        return value
+
 
 class BaselineAnalysis(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -24,4 +31,3 @@ class BaselineAnalysis(BaseModel):
     generated_test_code: str = Field(
         description="Complete executable pytest module; empty only when no defect is found"
     )
-

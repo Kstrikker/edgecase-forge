@@ -139,7 +139,7 @@ class OpenAICompatibleProvider:
     @staticmethod
     def _validate(content: str, response_model: type[BaseModel]) -> BaseModel:
         try:
-            payload: Any = json.loads(_strip_json_fence(content))
+            payload: Any = _extract_first_json_value(content)
         except json.JSONDecodeError as exc:
             raise ResponseParseError(f"Invalid JSON at character {exc.pos}") from exc
         try:
@@ -161,6 +161,15 @@ def _strip_json_fence(content: str) -> str:
     if value.endswith("```"):
         value = value[:-3]
     return value.strip()
+
+
+def _extract_first_json_value(content: str) -> Any:
+    value = _strip_json_fence(content)
+    first_object = value.find("{")
+    if first_object < 0:
+        raise json.JSONDecodeError("No JSON object found", value, 0)
+    payload, _ = json.JSONDecoder().raw_decode(value, first_object)
+    return payload
 
 
 def _sanitized_error(error: Exception) -> str:

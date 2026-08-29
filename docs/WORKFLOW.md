@@ -10,7 +10,7 @@ EdgeCase Forge improves bug discovery over a generic coding agent by combining b
 
 | Stage | Status | Exit criterion |
 |---|---|---|
-| Benchmark contract | Complete | FlashCart v1 frozen: clean control, 10 opaque mutants, hashes and 20 oracle checks |
+| Benchmark contract | Complete | FlashCart v1.0.1 frozen: clean control, 10 opaque mutants, hashes and 20 oracle checks |
 | Baseline | In progress | Gemini 3.5 Flash pilot passed differential proof; official three-run suite pending |
 | Iteration 1 | Blocked by baseline | Contract Mapper produces explicit endpoint invariants |
 | Iteration 2 | Blocked by Iteration 1 | Stateful attackers reproduce concurrency, replay and retry failures |
@@ -100,3 +100,6 @@ Only one integrator changes the main branch. Suggestions from other models enter
 - The identical generated test passed on the clean fixture.
 - Result: one confirmed differential kill on the smoke case.
 - Pre-suite hardening added: bounded transport retry, request pacing, repetitions, resume support, token aggregation and test-path normalization.
+- First full-suite attempt exposed Gemini compatibility output and concurrency-oracle flakiness; the run was intentionally not scored.
+- Adapter now normalizes a single evidence string, extracts the first valid JSON object, and records unrepaired model-output errors without crashing the suite.
+- M01/M02 concurrency oracles now retry the same invariant three times; M02's deterministic race window was increased. This produced benchmark `flashcart-v1.0.1` before any official score was frozen.
