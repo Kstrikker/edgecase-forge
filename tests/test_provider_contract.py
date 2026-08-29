@@ -57,15 +57,28 @@ def test_repair_prompt_contains_validation_error_and_runs_once() -> None:
         assert "findings" in body["messages"][-1]["content"]
         return _response('{"summary":"fixed","findings":[],"generated_test_code":""}')
 
-    parsed, _ = _provider(handler).generate_json([Message("user", "scan")], BaselineAnalysis)
+    parsed, result = _provider(handler).generate_json(
+        [Message("user", "scan")], BaselineAnalysis
+    )
     assert parsed.summary == "fixed"
     assert len(requests) == 2
+    assert result.usage.input_tokens == 20
+    assert result.usage.output_tokens == 40
+    assert result.semantic_attempts == 2
+    assert result.transport_attempts == 2
+    assert result.repair_used is True
 
 
 def test_second_invalid_response_fails() -> None:
     provider = _provider(lambda request: _response("{}"))
-    with pytest.raises(ResponseValidationError):
+    with pytest.raises(ResponseValidationError) as captured:
         provider.generate_json([Message("user", "scan")], BaselineAnalysis)
+    accounting = captured.value.accounting
+    assert accounting.usage.input_tokens == 20
+    assert accounting.usage.output_tokens == 40
+    assert accounting.semantic_attempts == 2
+    assert accounting.transport_attempts == 2
+    assert accounting.repair_used is True
 
 
 def test_authentication_error_is_not_repaired() -> None:
@@ -91,9 +104,14 @@ def test_rate_limit_retries_transport_without_semantic_repair() -> None:
             return httpx.Response(429, headers={"retry-after": "0"})
         return _response('{"summary":"ok","findings":[],"generated_test_code":""}')
 
-    parsed, _ = _provider(handler).generate_json([Message("user", "scan")], BaselineAnalysis)
+    parsed, result = _provider(handler).generate_json(
+        [Message("user", "scan")], BaselineAnalysis
+    )
     assert parsed.summary == "ok"
     assert calls == 2
+    assert result.transport_attempts == 2
+    assert result.semantic_attempts == 1
+    assert result.repair_used is False
 
 
 def test_exhausted_rate_limit_raises_after_bounded_retries() -> None:

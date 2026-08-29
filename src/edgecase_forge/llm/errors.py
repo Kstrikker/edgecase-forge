@@ -1,5 +1,16 @@
+from __future__ import annotations
+
+from .base import AttemptAccounting
+
+
 class ProviderError(RuntimeError):
     """Base provider error with a user-safe message."""
+
+    def __init__(
+        self, message: str, accounting: AttemptAccounting | None = None
+    ) -> None:
+        super().__init__(message)
+        self.accounting = accounting or AttemptAccounting()
 
 
 class AuthenticationError(ProviderError):
@@ -7,8 +18,13 @@ class AuthenticationError(ProviderError):
 
 
 class RateLimitError(ProviderError):
-    def __init__(self, message: str, retry_after: float | None = None) -> None:
-        super().__init__(message)
+    def __init__(
+        self,
+        message: str,
+        retry_after: float | None = None,
+        accounting: AttemptAccounting | None = None,
+    ) -> None:
+        super().__init__(message, accounting)
         self.retry_after = retry_after
 
 
@@ -34,4 +50,3 @@ class ResponseParseError(ProviderError):
 
 class ResponseValidationError(ProviderError):
     pass
-

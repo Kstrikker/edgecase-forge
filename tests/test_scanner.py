@@ -23,7 +23,7 @@ def test_mock_baseline_creates_reproducible_artifacts(tmp_path: Path) -> None:
     metadata = json.loads((run_dir / "run-metadata.json").read_text(encoding="utf-8"))
     assert report["case_id"] == "C00"
     assert report["tests_executed"] == 0
-    assert metadata["agent_version"] == "baseline-v0"
+    assert metadata["agent_version"] == "baseline-v1.0"
     assert (run_dir / "trajectory.jsonl").exists()
     assert (run_dir / "execution.log").exists()
 

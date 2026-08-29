@@ -18,7 +18,7 @@ CLI
      └─ Report, metadata, trajectory and execution log
 ```
 
-The benchmark evaluator sits outside this runtime. It gives the agent an opaque repository, then independently runs the generated tests against clean and mutant builds. This prevents the model from seeing the answer key and prevents prose-only claims from earning credit.
+The benchmark evaluator sits outside this runtime. It gives the agent an opaque repository, then independently runs the generated tests against clean and mutant builds. A candidate requires the same named node to pass clean, fail by assertion on the mutant and map to a reported finding. This prevents the model from seeing the answer key and prevents prose-only or broken-test claims from earning credit.
 
 ## Provider boundary
 
@@ -47,5 +47,6 @@ results/baseline/<run-id>/
 └── execution.log
 ```
 
-The dashboard will consume these files later. It will not invent a separate evidence format.
+Benchmark case runs also write `differential/clean` and `differential/mutant` evidence directories containing `execution.json`, `junit.xml`, `stdout.log` and `stderr.log`, plus one atomic `differential.json` classification manifest.
 
+The dashboard will consume these files later. It will not invent a separate evidence format.

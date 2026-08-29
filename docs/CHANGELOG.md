@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Differential evaluator v1
+
+- Score generated pytest nodes independently instead of treating any nonzero module exit as a mutant kill.
+- Require a named test to pass clean, fail by assertion on the mutant and map to a reported finding.
+- Persist JUnit XML, complete stdout/stderr, execution metadata, test hashes and clean/mutant repository hashes.
+- Reject timeouts, collection errors, runtime exceptions, missing nodes, unclaimed failures and modified inputs as kills.
+- Aggregate token, latency and attempt counts across semantic repair calls.
+- Freeze prompt, schema, harness, oracle, mutation, source, dependency and Git fingerprints for new and resumed suites.
+- Add repeatable `--case` options for inexpensive pilot subsets.
+
 ### FlashCart v1.1.0 integrity rebuild
 
 - Replaced the clean checkout flow with an explicit payment state machine and durable inventory reservation.

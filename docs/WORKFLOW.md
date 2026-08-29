@@ -11,7 +11,7 @@ EdgeCase Forge improves bug discovery over a generic coding agent by combining b
 | Stage | Status | Exit criterion |
 |---|---|---|
 | Benchmark contract | Complete | FlashCart v1.1.0: clean control, 10 opaque mutants, frozen hashes and a 100-cell isolation matrix |
-| Baseline | In progress | Gemini 3.5 Flash pilot passed differential proof; official three-run suite pending |
+| Baseline | In progress | Node-level evaluator and frozen fingerprints complete; restricted execution and fresh pilot pending |
 | Iteration 1 | Blocked by baseline | Contract Mapper produces explicit endpoint invariants |
 | Iteration 2 | Blocked by Iteration 1 | Stateful attackers reproduce concurrency, replay and retry failures |
 | Iteration 3 | Blocked by Iteration 2 | Independent executable verifier reduces false positives |
@@ -77,7 +77,7 @@ Only one integrator changes the main branch. Suggestions from other models enter
 
 - Provider-neutral Gemini/Grok/OpenAI-compatible boundary implemented.
 - Portable JSON-object validation and exact-error repair implemented.
-- Frozen `baseline-v0` prompt, repository collector, report and trajectory writer implemented.
+- Frozen `baseline-v1.0` prompt, repository collector, report and trajectory writer implemented.
 - External mutation-scoring contract implemented.
 - Clean/mutant stock-race smoke fixtures reproduce the expected difference.
 - Automated verification: 11 tests passing.
@@ -88,7 +88,7 @@ Only one integrator changes the main branch. Suggestions from other models enter
 - All ten invariants pass on clean; each mutant fails only its target oracle across the full 10×10 matrix.
 - Neutral export removes evaluator hooks and case identifiers.
 - Variant hashes are frozen in `expected_hashes.json`.
-- Next: run `baseline-v0` with one locked Gemini model three times per case.
+- Next: verify restricted execution, run a two-case Gemini pilot, then freeze the full baseline.
 - Freeze and adjudicate raw evidence before Iteration 1 begins.
 
 ### Gemini pilot — passed
@@ -103,3 +103,13 @@ Only one integrator changes the main branch. Suggestions from other models enter
 - First full-suite attempt exposed Gemini compatibility output and concurrency-oracle flakiness; the run was intentionally not scored.
 - Adapter now normalizes a single evidence string, extracts the first valid JSON object, and records unrepaired model-output errors without crashing the suite.
 - M01/M02 concurrency oracles retry the same invariant three times. FlashCart `v1.1.0` also separates inventory and idempotency locking so the two race mutants remain independently measurable.
+
+### Evaluator integrity rebuild — complete
+
+- Generated tests now assert intended correct behavior rather than accepting observed defective behavior.
+- Candidate kills are scored per named pytest node: clean pass plus mutant assertion failure.
+- Collection, setup, runtime, missing-node, skip and timeout outcomes cannot earn credit.
+- Every differential run preserves JUnit, stdout, stderr, commands, durations and pre/post hashes.
+- Semantic repair accounting includes both model calls and every transport attempt.
+- Resume requires the complete frozen benchmark fingerprint, not only provider and model.
+- Automated verification: 159 tests passing.

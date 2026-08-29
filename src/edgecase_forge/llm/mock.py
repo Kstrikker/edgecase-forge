@@ -10,7 +10,16 @@ from .base import LLMResult, Message, Usage
 
 class MockProvider:
     name = "mock"
-    model = "deterministic-baseline-v0"
+    model = "deterministic-baseline-v1.0"
+
+    @property
+    def experiment_config(self) -> dict:
+        return {
+            "provider": self.name,
+            "model": self.model,
+            "implementation": f"{type(self).__module__}.{type(self).__qualname__}",
+            "temperature": 0.0,
+        }
 
     def generate_json(
         self,
@@ -31,4 +40,3 @@ class MockProvider:
             usage=Usage(input_tokens=0, output_tokens=0),
             request_id="mock-request",
         )
-

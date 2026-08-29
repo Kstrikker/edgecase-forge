@@ -10,7 +10,7 @@ from pathlib import Path
 from edgecase_forge.llm.base import LLMProvider, Message
 from edgecase_forge.llm.schemas import BaselineAnalysis
 
-from .executor import ExecutionResult, run_generated_pytest
+from .executor import ExecutionResult, execution_payload, run_generated_pytest
 from .prompt import BASELINE_PROMPT_VERSION, BASELINE_SYSTEM_PROMPT, prompt_sha256
 from .repository import collect_repository_context
 
@@ -47,7 +47,11 @@ class BaselineScanner:
             generated_path = tests_dir / "test_generated_baseline.py"
             generated_path.write_text(analysis.generated_test_code, encoding="utf-8")
             if execute:
-                execution = run_generated_pytest(repo=repo.resolve(), test_file=generated_path.resolve())
+                execution = run_generated_pytest(
+                    repo=repo.resolve(),
+                    test_file=generated_path.resolve(),
+                    junit_path=run_dir / "execution-junit.xml",
+                )
 
         reproduced = execution.executed and execution.exit_code not in {None, 0}
         findings = []
@@ -69,7 +73,12 @@ class BaselineScanner:
             "runtime_seconds": round(time.monotonic() - started, 4),
             "input_tokens": llm_result.usage.input_tokens,
             "output_tokens": llm_result.usage.output_tokens,
-            "execution": asdict(execution),
+            "model_latency_seconds": round(llm_result.latency_seconds, 4),
+            "semantic_attempts": llm_result.semantic_attempts,
+            "transport_attempts": llm_result.transport_attempts,
+            "repair_used": llm_result.repair_used,
+            "request_ids": list(llm_result.accounting.request_ids),
+            "execution": execution_payload(execution),
         }
         metadata = {
             "run_id": run_id,
@@ -96,9 +105,12 @@ class BaselineScanner:
                 "request_id": llm_result.request_id,
                 "latency_seconds": llm_result.latency_seconds,
                 "usage": asdict(llm_result.usage),
+                "semantic_attempts": llm_result.semantic_attempts,
+                "transport_attempts": llm_result.transport_attempts,
+                "repair_used": llm_result.repair_used,
                 "validated_output": analysis.model_dump(),
             },
-            {"event": "pytest_execution", **asdict(execution)},
+            {"event": "pytest_execution", **execution_payload(execution)},
         ]
 
         _write_json(run_dir / "report.json", report)

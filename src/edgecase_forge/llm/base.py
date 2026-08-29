@@ -19,6 +19,16 @@ class Usage:
 
 
 @dataclass(frozen=True, slots=True)
+class AttemptAccounting:
+    usage: Usage = field(default_factory=Usage)
+    latency_seconds: float = 0.0
+    semantic_attempts: int = 0
+    transport_attempts: int = 0
+    repair_used: bool = False
+    request_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class LLMResult:
     content: str
     provider: str
@@ -26,6 +36,24 @@ class LLMResult:
     latency_seconds: float
     usage: Usage = field(default_factory=Usage)
     request_id: str | None = None
+    semantic_attempts: int = 1
+    transport_attempts: int = 1
+    repair_used: bool = False
+    request_ids: tuple[str, ...] = ()
+
+    @property
+    def accounting(self) -> AttemptAccounting:
+        request_ids = self.request_ids or (
+            (self.request_id,) if self.request_id is not None else ()
+        )
+        return AttemptAccounting(
+            usage=self.usage,
+            latency_seconds=self.latency_seconds,
+            semantic_attempts=self.semantic_attempts,
+            transport_attempts=self.transport_attempts,
+            repair_used=self.repair_used,
+            request_ids=request_ids,
+        )
 
 
 class LLMProvider(Protocol):
@@ -40,4 +68,3 @@ class LLMProvider(Protocol):
 
 
 JsonObject = dict[str, Any]
-
