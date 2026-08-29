@@ -17,6 +17,7 @@
 - Add a Docker runner with network disabled, read-only source mounts, dropped capabilities and bounded CPU, memory and process count.
 - Block Docker-backed benchmark runs until Docker Desktop and the pinned runner image are available.
 - Preserve the local backend for trusted, API-free rehearsal and unit tests.
+- Harden the runner image by upgrading OpenSSL during build and removing unused Perl.
 
 ### FlashCart v1.1.0 integrity rebuild
 

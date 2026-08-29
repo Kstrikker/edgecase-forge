@@ -46,3 +46,10 @@ def test_restricted_runner_applies_container_boundaries(tmp_path: Path, monkeypa
     assert "--cpus" in command and "1.0" in command
     assert captured["timeout"] == 7
     assert captured["kwargs"]["env"]["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] == "1"
+
+
+def test_runner_image_removes_unused_perl_and_updates_openssl() -> None:
+    dockerfile = restricted.DOCKERFILE.read_text(encoding="utf-8")
+    assert "apt-get install --only-upgrade" in dockerfile
+    assert "openssl" in dockerfile
+    assert "apt-get purge -y perl" in dockerfile
