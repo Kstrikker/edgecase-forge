@@ -14,6 +14,7 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 python -m pip install -e ".[dev,benchmark]"
 edgecase-forge providers
 edgecase-forge baseline-scan --repo ./path/to/trusted/repository --provider mock
+edgecase-forge benchmark-run --provider mock
 pytest
 ```
 
@@ -22,3 +23,5 @@ Use `--provider gemini` with `GEMINI_API_KEY`, or `--provider grok` with `XAI_AP
 Generated tests are code. Baseline execution is disabled unless `--execute` is supplied, and should only be used with trusted benchmark repositories. Docker isolation is a later iteration.
 
 Project decisions and progress live in [docs/WORKFLOW.md](docs/WORKFLOW.md).
+
+The frozen FlashCart benchmark contains one clean control and ten isolated mutants. `benchmark-run` exports one neutral case at a time, runs the frozen baseline, and records differential clean-versus-mutant evidence. Candidate kills require independent invariant adjudication before they count toward the final mutation score.

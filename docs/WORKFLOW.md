@@ -10,8 +10,8 @@ EdgeCase Forge improves bug discovery over a generic coding agent by combining b
 
 | Stage | Status | Exit criterion |
 |---|---|---|
-| Benchmark contract | In progress | Specification frozen; race smoke pair passes; FlashCart clean fixture and 10 opaque mutants pending |
-| Baseline | In progress | Provider, scanner, artifacts and scoring work; live model run over every fixture pending |
+| Benchmark contract | Complete | FlashCart v1 frozen: clean control, 10 opaque mutants, hashes and 20 oracle checks |
+| Baseline | In progress | Full mock suite passes; locked live-model runs and adjudication pending |
 | Iteration 1 | Blocked by baseline | Contract Mapper produces explicit endpoint invariants |
 | Iteration 2 | Blocked by Iteration 1 | Stateful attackers reproduce concurrency, replay and retry failures |
 | Iteration 3 | Blocked by Iteration 2 | Independent executable verifier reduces false positives |
@@ -84,7 +84,9 @@ Only one integrator changes the main branch. Suggestions from other models enter
 
 ### Next checkpoint — FlashCart benchmark
 
-- Implement the clean five-endpoint service and private oracle.
-- Produce ten single-fault opaque variants from minimal patches.
-- Run `baseline-v0` with one locked Gemini model three times per case.
-- Freeze raw evidence before Iteration 1 begins.
+- FlashCart service, private oracle and ten isolated transformations completed.
+- All ten invariants pass on clean; each mutant fails its target oracle.
+- Neutral export removes evaluator hooks and case identifiers.
+- Variant hashes are frozen in `expected_hashes.json`.
+- Next: run `baseline-v0` with one locked Gemini model three times per case.
+- Freeze and adjudicate raw evidence before Iteration 1 begins.

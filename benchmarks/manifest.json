@@ -1,6 +1,6 @@
 {
-  "benchmark_version": "flashcart-v1-draft",
-  "status": "specification-frozen-fixtures-pending",
+  "benchmark_version": "flashcart-v1",
+  "status": "frozen",
   "clean_control": "C00",
   "primary_metric": "correctly_killed_mutants / 10",
   "hard_case": "M08",
@@ -67,4 +67,3 @@
     }
   ]
 }
-

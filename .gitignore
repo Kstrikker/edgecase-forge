@@ -7,8 +7,9 @@ htmlcov/
 .env
 dist/
 build/
+benchmarks/flashcart/generated/
+results/benchmark/
 results/**/*.json
 !results/**/.gitkeep
 trajectories/**/*.json
 !trajectories/**/.gitkeep
-

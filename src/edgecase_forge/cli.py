@@ -5,6 +5,7 @@ from pathlib import Path
 import typer
 
 from edgecase_forge.baseline import BaselineScanner
+from edgecase_forge.benchmark import run_flashcart_suite
 from edgecase_forge.llm.registry import PROVIDERS, build_provider
 
 app = typer.Typer(no_args_is_help=True, help="Evidence-first adversarial API testing")
@@ -41,6 +42,19 @@ def baseline_scan(
     typer.echo(f"Baseline run saved: {run_dir}")
 
 
+@app.command("benchmark-run")
+def benchmark_run(
+    provider: str = typer.Option("mock"),
+    model: str | None = typer.Option(None),
+    output: Path = typer.Option(Path("results/benchmark")),
+) -> None:
+    """Run baseline-v0 across the frozen FlashCart suite."""
+    suite_dir = run_flashcart_suite(
+        provider=build_provider(provider, model),
+        output_root=output,
+    )
+    typer.echo(f"Benchmark suite saved: {suite_dir}")
+
+
 if __name__ == "__main__":
     app()
-

@@ -1,0 +1,70 @@
+{
+  "M01": [
+    {
+      "find": "    with STATE.lock:\n        return _create_order_core(user, idempotency_key, payload)",
+      "replace": "    return _create_order_core(user, idempotency_key, payload)"
+    },
+    {
+      "find": "    if STATE.stock < payload.quantity:\n        raise HTTPException(status_code=409, detail=\"Out of stock\")",
+      "replace": "    if STATE.stock < payload.quantity:\n        raise HTTPException(status_code=409, detail=\"Out of stock\")\n    import time\n    time.sleep(0.02)"
+    }
+  ],
+  "M02": [
+    {
+      "find": "    with STATE.lock:\n        return _create_order_core(user, idempotency_key, payload)",
+      "replace": "    return _create_order_core(user, idempotency_key, payload)"
+    },
+    {
+      "find": "    if existing_order_id:\n        return STATE.orders[existing_order_id]",
+      "replace": "    if existing_order_id:\n        return STATE.orders[existing_order_id]\n    import time\n    time.sleep(0.02)"
+    }
+  ],
+  "M03": [
+    {
+      "find": "    if user != \"admin\" and order[\"owner\"] != user:\n        raise HTTPException(status_code=403, detail=\"Order belongs to another user\")\n    return order",
+      "replace": "    return order"
+    }
+  ],
+  "M04": [
+    {
+      "find": "    if not x_signature or not hmac.compare_digest(x_signature, expected):\n        raise HTTPException(status_code=401, detail=\"Invalid webhook signature\")",
+      "replace": "    if False:\n        raise HTTPException(status_code=401, detail=\"Invalid webhook signature\")"
+    }
+  ],
+  "M05": [
+    {
+      "find": "        STATE.processed_events.add(payload.event_id)\n        order = STATE.orders.get(payload.order_id)",
+      "replace": "        order = STATE.orders.get(payload.order_id)"
+    }
+  ],
+  "M06": [
+    {
+      "find": "    quantity: int = Field(gt=0, le=5)",
+      "replace": "    quantity: int"
+    }
+  ],
+  "M07": [
+    {
+      "find": "    charge = STATE.payment.charge(idempotency_key, amount, payload.payment_token)\n    STATE.stock -= payload.quantity",
+      "replace": "    STATE.stock -= payload.quantity\n    charge = STATE.payment.charge(idempotency_key, amount, payload.payment_token)"
+    }
+  ],
+  "M08": [
+    {
+      "find": "    charge = STATE.payment.charge(idempotency_key, amount, payload.payment_token)",
+      "replace": "    charge = STATE.payment.charge(f\"{idempotency_key}-{uuid4().hex}\", amount, payload.payment_token)"
+    }
+  ],
+  "M09": [
+    {
+      "find": "        if order[\"status\"] == \"cancelled\":\n            return order\n        order[\"status\"] = \"cancelled\"",
+      "replace": "        order[\"status\"] = \"cancelled\""
+    }
+  ],
+  "M10": [
+    {
+      "find": "    amount = STATE.price * payload.quantity",
+      "replace": "    amount = payload.quoted_total if payload.quoted_total is not None else STATE.price * payload.quantity"
+    }
+  ]
+}

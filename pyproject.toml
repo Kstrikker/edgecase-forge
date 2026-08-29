@@ -28,9 +28,8 @@ benchmark = [
 edgecase-forge = "edgecase_forge.cli:app"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/edgecase_forge"]
+packages = ["src/edgecase_forge", "benchmarks"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "benchmarks/flashcart/oracle"]
 addopts = "-q"
-
