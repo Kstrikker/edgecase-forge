@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, Callable
 
 import httpx
 from pydantic import BaseModel, ValidationError
@@ -31,6 +31,9 @@ class OpenAICompatibleProvider:
         capabilities: CapabilityProfile,
         timeout_seconds: float = 60.0,
         temperature: float = 0.0,
+        max_transport_retries: int = 2,
+        retry_backoff_seconds: float = 1.0,
+        sleep: Callable[[float], None] = time.sleep,
         client: httpx.Client | None = None,
     ) -> None:
         if not api_key:
@@ -41,6 +44,9 @@ class OpenAICompatibleProvider:
         self._base_url = base_url.rstrip("/")
         self._capabilities = capabilities
         self._temperature = temperature
+        self._max_transport_retries = max_transport_retries
+        self._retry_backoff_seconds = retry_backoff_seconds
+        self._sleep = sleep
         self._client = client or httpx.Client(timeout=timeout_seconds)
 
     def generate_json(
@@ -76,28 +82,41 @@ class OpenAICompatibleProvider:
             "temperature": self._temperature,
             "response_format": {"type": "json_object"},
         }
-        try:
-            response = self._client.post(
-                f"{self._base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {self._api_key}"},
-                json=body,
-            )
-        except httpx.TimeoutException as exc:
-            raise ProviderTimeoutError(f"{self.name} request timed out") from exc
-        except httpx.HTTPError as exc:
-            raise ProviderUnavailableError(f"{self.name} request failed") from exc
+        response: httpx.Response | None = None
+        for attempt in range(self._max_transport_retries + 1):
+            try:
+                response = self._client.post(
+                    f"{self._base_url}/chat/completions",
+                    headers={"Authorization": f"Bearer {self._api_key}"},
+                    json=body,
+                )
+            except httpx.TimeoutException as exc:
+                if attempt == self._max_transport_retries:
+                    raise ProviderTimeoutError(f"{self.name} request timed out") from exc
+                self._sleep(self._retry_backoff_seconds * (2**attempt))
+                continue
+            except httpx.HTTPError as exc:
+                raise ProviderUnavailableError(f"{self.name} request failed") from exc
 
-        if response.status_code in {401, 403}:
-            raise AuthenticationError(f"{self.name} rejected the API key")
-        if response.status_code == 429:
-            retry_after = _parse_retry_after(response.headers.get("retry-after"))
-            raise RateLimitError(f"{self.name} rate limit reached", retry_after)
-        if response.status_code >= 500:
-            raise ProviderUnavailableError(f"{self.name} is temporarily unavailable")
-        if response.status_code >= 400:
-            raise ProviderUnavailableError(
-                f"{self.name} returned HTTP {response.status_code}"
-            )
+            if response.status_code in {401, 403}:
+                raise AuthenticationError(f"{self.name} rejected the API key")
+            if response.status_code == 429 or response.status_code >= 500:
+                retry_after = _parse_retry_after(response.headers.get("retry-after"))
+                if attempt < self._max_transport_retries:
+                    delay = retry_after or self._retry_backoff_seconds * (2**attempt)
+                    self._sleep(min(delay, 60.0))
+                    continue
+                if response.status_code == 429:
+                    raise RateLimitError(f"{self.name} rate limit reached", retry_after)
+                raise ProviderUnavailableError(f"{self.name} is temporarily unavailable")
+            if response.status_code >= 400:
+                raise ProviderUnavailableError(
+                    f"{self.name} returned HTTP {response.status_code}"
+                )
+            break
+
+        if response is None:
+            raise ProviderUnavailableError(f"{self.name} returned no response")
 
         payload = response.json()
         try:
@@ -155,4 +174,3 @@ def _parse_retry_after(value: str | None) -> float | None:
         return float(value)
     except ValueError:
         return None
-

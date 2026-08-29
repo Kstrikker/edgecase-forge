@@ -53,6 +53,8 @@ class BaselineScanner:
         findings = []
         for finding in analysis.findings:
             item = finding.model_dump()
+            if generated_path is not None:
+                item["test_file"] = "generated_tests/test_generated_baseline.py"
             item["reproduced"] = reproduced
             findings.append(item)
 
@@ -118,4 +120,3 @@ def _new_run_id() -> str:
 
 def _write_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-

@@ -23,7 +23,7 @@ def _response(content: str, status: int = 200) -> httpx.Response:
     )
 
 
-def _provider(handler) -> OpenAICompatibleProvider:
+def _provider(handler, **kwargs) -> OpenAICompatibleProvider:
     return OpenAICompatibleProvider(
         name="gemini",
         model="locked-model",
@@ -31,6 +31,8 @@ def _provider(handler) -> OpenAICompatibleProvider:
         base_url="https://example.test/v1",
         capabilities=PORTABLE_OPENAI_COMPATIBLE,
         client=httpx.Client(transport=httpx.MockTransport(handler)),
+        sleep=lambda _: None,
+        **kwargs,
     )
 
 
@@ -78,3 +80,34 @@ def test_authentication_error_is_not_repaired() -> None:
         _provider(handler).generate_json([Message("user", "scan")], BaselineAnalysis)
     assert calls == 1
 
+
+def test_rate_limit_retries_transport_without_semantic_repair() -> None:
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(429, headers={"retry-after": "0"})
+        return _response('{"summary":"ok","findings":[],"generated_test_code":""}')
+
+    parsed, _ = _provider(handler).generate_json([Message("user", "scan")], BaselineAnalysis)
+    assert parsed.summary == "ok"
+    assert calls == 2
+
+
+def test_exhausted_rate_limit_raises_after_bounded_retries() -> None:
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(429)
+
+    from edgecase_forge.llm.errors import RateLimitError
+
+    with pytest.raises(RateLimitError):
+        _provider(handler, max_transport_retries=2).generate_json(
+            [Message("user", "scan")], BaselineAnalysis
+        )
+    assert calls == 3

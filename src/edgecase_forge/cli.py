@@ -47,11 +47,23 @@ def benchmark_run(
     provider: str = typer.Option("mock"),
     model: str | None = typer.Option(None),
     output: Path = typer.Option(Path("results/benchmark")),
+    repetitions: int = typer.Option(1, min=1, max=10),
+    request_delay: float = typer.Option(0.0, min=0.0),
+    resume: Path | None = typer.Option(
+        None,
+        exists=True,
+        file_okay=False,
+        resolve_path=True,
+        help="Existing interrupted suite directory to resume.",
+    ),
 ) -> None:
     """Run baseline-v0 across the frozen FlashCart suite."""
     suite_dir = run_flashcart_suite(
         provider=build_provider(provider, model),
         output_root=output,
+        repetitions=repetitions,
+        request_delay_seconds=request_delay,
+        resume_dir=resume,
     )
     typer.echo(f"Benchmark suite saved: {suite_dir}")
 

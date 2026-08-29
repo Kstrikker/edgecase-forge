@@ -11,7 +11,7 @@ EdgeCase Forge improves bug discovery over a generic coding agent by combining b
 | Stage | Status | Exit criterion |
 |---|---|---|
 | Benchmark contract | Complete | FlashCart v1 frozen: clean control, 10 opaque mutants, hashes and 20 oracle checks |
-| Baseline | In progress | Full mock suite passes; locked live-model runs and adjudication pending |
+| Baseline | In progress | Gemini 3.5 Flash pilot passed differential proof; official three-run suite pending |
 | Iteration 1 | Blocked by baseline | Contract Mapper produces explicit endpoint invariants |
 | Iteration 2 | Blocked by Iteration 1 | Stateful attackers reproduce concurrency, replay and retry failures |
 | Iteration 3 | Blocked by Iteration 2 | Independent executable verifier reduces false positives |
@@ -90,3 +90,13 @@ Only one integrator changes the main branch. Suggestions from other models enter
 - Variant hashes are frozen in `expected_hashes.json`.
 - Next: run `baseline-v0` with one locked Gemini model three times per case.
 - Freeze and adjudicate raw evidence before Iteration 1 begins.
+
+### Gemini pilot — passed
+
+- Locked candidate model: `gemini-3.5-flash`, temperature `0.0`.
+- Input/output: 1,211 / 616 tokens.
+- Model latency: 18.422 seconds; end-to-end runtime: 58 seconds on Windows.
+- Generated concurrency test failed on the race mutant with two successful purchases from stock one.
+- The identical generated test passed on the clean fixture.
+- Result: one confirmed differential kill on the smoke case.
+- Pre-suite hardening added: bounded transport retry, request pacing, repetitions, resume support, token aggregation and test-path normalization.

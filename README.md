@@ -25,3 +25,16 @@ Generated tests are code. Baseline execution is disabled unless `--execute` is s
 Project decisions and progress live in [docs/WORKFLOW.md](docs/WORKFLOW.md).
 
 The frozen FlashCart benchmark contains one clean control and ten isolated mutants. `benchmark-run` exports one neutral case at a time, runs the frozen baseline, and records differential clean-versus-mutant evidence. Candidate kills require independent invariant adjudication before they count toward the final mutation score.
+
+Official baseline configuration:
+
+```bash
+edgecase-forge benchmark-run \
+  --provider gemini \
+  --model gemini-3.5-flash \
+  --repetitions 3 \
+  --request-delay 5 \
+  --output results/baseline-official
+```
+
+If a rate limit interrupts the suite, rerun the identical command with `--resume <suite-directory>`. Completed cases are not called again. API keys are removed from the environment before generated pytest code executes.
