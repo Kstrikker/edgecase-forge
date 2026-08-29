@@ -69,7 +69,7 @@ Only one integrator changes the main branch. Suggestions from other models enter
 - Pydantic schemas stay shallow and provider-neutral.
 - Semantic validation receives at most one repair attempt containing the sanitized parser error.
 - API keys are never written to results, prompts, trajectories or logs.
-- Generated tests execute only with explicit consent and only against trusted fixtures until Docker isolation lands.
+- Official generated-test execution uses the restricted Docker backend. Local execution remains available only for trusted rehearsal fixtures.
 
 ## Checkpoint log
 
@@ -88,7 +88,7 @@ Only one integrator changes the main branch. Suggestions from other models enter
 - All ten invariants pass on clean; each mutant fails only its target oracle across the full 10×10 matrix.
 - Neutral export removes evaluator hooks and case identifiers.
 - Variant hashes are frozen in `expected_hashes.json`.
-- Next: verify restricted execution, run a two-case Gemini pilot, then freeze the full baseline.
+- Restricted Docker backend implemented; next: run its preflight, then a two-case Gemini pilot, then freeze the full baseline.
 - Freeze and adjudicate raw evidence before Iteration 1 begins.
 
 ### Gemini pilot — passed
@@ -112,4 +112,4 @@ Only one integrator changes the main branch. Suggestions from other models enter
 - Every differential run preserves JUnit, stdout, stderr, commands, durations and pre/post hashes.
 - Semantic repair accounting includes both model calls and every transport attempt.
 - Resume requires the complete frozen benchmark fingerprint, not only provider and model.
-- Automated verification: 159 tests passing.
+- Automated verification: 161 tests passing.

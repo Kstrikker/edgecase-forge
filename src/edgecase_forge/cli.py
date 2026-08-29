@@ -61,6 +61,11 @@ def benchmark_run(
         resolve_path=True,
         help="Existing interrupted suite directory to resume.",
     ),
+    execution_backend: str = typer.Option(
+        "docker",
+        "--execution-backend",
+        help="Docker for official runs; local is for trusted rehearsal only.",
+    ),
 ) -> None:
     """Run baseline-v1.0 across the frozen FlashCart suite."""
     suite_dir = run_flashcart_suite(
@@ -70,6 +75,7 @@ def benchmark_run(
         request_delay_seconds=request_delay,
         resume_dir=resume,
         case_ids=case,
+        execution_backend=execution_backend,
     )
     typer.echo(f"Benchmark suite saved: {suite_dir}")
 

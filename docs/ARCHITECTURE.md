@@ -32,7 +32,7 @@ Provider capabilities are explicit. Unsupported strict schema or tool behavior m
 - API keys are read from environment variables and never enter request trajectories.
 - Generated test code is written beneath the run artifact directory.
 - Test execution requires an explicit flag and is currently restricted to trusted fixtures.
-- Docker sandboxing and production-source write protection are Iteration 2 requirements before arbitrary repositories are supported.
+- Official benchmark execution uses a networkless Docker container with read-only source, bounded resources and dropped capabilities. Production-source write protection remains required before arbitrary repositories are supported.
 
 ## Artifact contract
 

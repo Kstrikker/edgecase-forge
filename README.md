@@ -20,7 +20,7 @@ pytest
 
 Use `--provider gemini` with `GEMINI_API_KEY`, or `--provider grok` with `XAI_API_KEY`. The mock provider is deterministic and requires no network or key.
 
-Generated tests are code. Baseline execution is disabled unless `--execute` is supplied, and should only be used with trusted benchmark repositories. Docker isolation is a later iteration.
+Generated tests are code. Generic baseline execution is disabled unless `--execute` is supplied. Official benchmark runs use the restricted Docker backend; local execution is only for trusted rehearsal.
 
 Project decisions and progress live in [docs/WORKFLOW.md](docs/WORKFLOW.md).
 
@@ -38,5 +38,7 @@ edgecase-forge benchmark-run \
   --request-delay 5 \
   --output results/baseline-official
 ```
+
+Docker Desktop must be running. The runner uses `--network none`, a read-only repository mount, dropped capabilities, and CPU/memory/process limits. Use `--execution-backend local` only for a fast local rehearsal.
 
 If a rate limit interrupts the suite, rerun the identical command with `--resume <suite-directory>`. Completed cases are not called again. API keys are removed from the environment before generated pytest code executes.

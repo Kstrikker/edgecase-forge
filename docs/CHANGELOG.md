@@ -12,6 +12,12 @@
 - Freeze prompt, schema, harness, oracle, mutation, source, dependency and Git fingerprints for new and resumed suites.
 - Add repeatable `--case` options for inexpensive pilot subsets.
 
+### Restricted execution v1
+
+- Add a Docker runner with network disabled, read-only source mounts, dropped capabilities and bounded CPU, memory and process count.
+- Block Docker-backed benchmark runs until Docker Desktop and the pinned runner image are available.
+- Preserve the local backend for trusted, API-free rehearsal and unit tests.
+
 ### FlashCart v1.1.0 integrity rebuild
 
 - Replaced the clean checkout flow with an explicit payment state machine and durable inventory reservation.

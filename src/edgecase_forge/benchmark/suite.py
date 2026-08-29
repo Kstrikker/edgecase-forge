@@ -13,6 +13,7 @@ from pathlib import Path
 from benchmarks.flashcart import export_agent_repo
 from edgecase_forge.baseline import BaselineScanner
 from edgecase_forge.baseline.executor import ExecutionResult, run_generated_pytest
+from edgecase_forge.baseline.restricted import ensure_runner_image, run_restricted_pytest
 from edgecase_forge.llm.base import LLMProvider
 from edgecase_forge.llm.errors import ResponseParseError, ResponseValidationError
 
@@ -45,6 +46,7 @@ def run_flashcart_suite(
     request_delay_seconds: float = 0.0,
     resume_dir: Path | None = None,
     case_ids: Sequence[str] | None = None,
+    execution_backend: str = "local",
 ) -> Path:
     """Run the frozen baseline and preserve clean-versus-mutant node evidence."""
     selected_cases = validate_cases(case_ids)
@@ -52,6 +54,10 @@ def run_flashcart_suite(
         raise ValueError("repetitions must be at least 1")
     if request_delay_seconds < 0:
         raise ValueError("request_delay_seconds cannot be negative")
+    if execution_backend not in {"local", "docker"}:
+        raise ValueError("execution_backend must be 'local' or 'docker'")
+    if execution_backend == "docker":
+        ensure_runner_image()
 
     source_hashes, manifest, manifest_sha256 = preflight_flashcart()
     suite_frozen_config = frozen_config(
@@ -60,6 +66,7 @@ def run_flashcart_suite(
         selected_cases=selected_cases,
         source_hashes=source_hashes,
         manifest_sha256=manifest_sha256,
+        execution_backend=execution_backend,
     )
     if resume_dir is None:
         suite_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -118,6 +125,7 @@ def run_flashcart_suite(
                 source_hashes=source_hashes,
                 expected_case=expected_case(manifest, case_id),
                 manifest_sha256=manifest_sha256,
+                execution_backend=execution_backend,
             )
             evaluations.append(evaluation)
             append_jsonl(progress_path, evaluation)
@@ -144,6 +152,7 @@ def _run_case(
     source_hashes: dict[str, str],
     expected_case: dict | None,
     manifest_sha256: str,
+    execution_backend: str,
 ) -> dict:
     with tempfile.TemporaryDirectory(prefix="edgecase-case-") as temporary:
         temporary_root = Path(temporary)
@@ -192,6 +201,7 @@ def _run_case(
             case_id="C00",
             execution_root=execution_root,
             generated_test_bytes=generated_test_bytes,
+            execution_backend=execution_backend,
         )
         write_execution_evidence(
             role="clean",
@@ -217,6 +227,7 @@ def _run_case(
                 case_id=case_id,
                 execution_root=execution_root,
                 generated_test_bytes=generated_test_bytes,
+                execution_backend=execution_backend,
             )
             write_execution_evidence(
                 role="mutant",
@@ -333,6 +344,7 @@ def _run_neutral_execution(
     case_id: str,
     execution_root: Path,
     generated_test_bytes: bytes,
+    execution_backend: str,
 ) -> tuple[ExecutionResult, str, str, str]:
     """Run either side at the same opaque paths so role labels cannot leak."""
     if execution_root.exists():
@@ -341,9 +353,9 @@ def _run_neutral_execution(
     repo_before = tree_sha256(repo)
     test_file = repo / "test_generated.py"
     test_file.write_bytes(generated_test_bytes)
-    result = run_generated_pytest(
-        repo=repo,
-        test_file=test_file,
+    runner = run_restricted_pytest if execution_backend == "docker" else run_generated_pytest
+    result = runner(
+        repo=repo, test_file=test_file,
         junit_path=execution_root / "artifacts" / "junit.xml",
     )
     test_after = file_sha256(test_file) if test_file.exists() else "missing"
