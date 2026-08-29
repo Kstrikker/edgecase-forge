@@ -38,7 +38,7 @@ def run_flashcart_suite(
             suite_dir / "suite-config.json",
             {
                 "suite_id": suite_id,
-                "benchmark_version": "flashcart-v1.0.1",
+                "benchmark_version": "flashcart-v1.1.0",
                 "provider": provider.name,
                 "model": provider.model,
                 "repetitions": repetitions,
@@ -164,7 +164,7 @@ def run_flashcart_suite(
     score_values = [item["score"] for item in repetition_scores]
     summary = {
         "suite_id": suite_id,
-        "benchmark_version": "flashcart-v1.0.1",
+        "benchmark_version": "flashcart-v1.1.0",
         "provider": provider.name,
         "model": provider.model,
         "repetitions": repetitions,

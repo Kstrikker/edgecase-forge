@@ -21,7 +21,7 @@ and payment-webhook endpoints. Use bearer tokens `buyer-a`, `buyer-b`, or
 
 PYPROJECT = """[project]
 name = "flashcart-api"
-version = "1.0.0"
+version = "1.1.0"
 requires-python = ">=3.11"
 dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
 """

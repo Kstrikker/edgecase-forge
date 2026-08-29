@@ -1,28 +1,24 @@
 {
   "M01": [
     {
-      "find": "    with STATE.lock:\n        return _create_order_core(user, idempotency_key, payload)",
-      "replace": "    return _create_order_core(user, idempotency_key, payload)"
-    },
-    {
-      "find": "    if STATE.stock < payload.quantity:\n        raise HTTPException(status_code=409, detail=\"Out of stock\")",
-      "replace": "    if STATE.stock < payload.quantity:\n        raise HTTPException(status_code=409, detail=\"Out of stock\")\n    import time\n    time.sleep(0.02)"
+      "find": "def _reserve_inventory(quantity: int) -> None:\n    with STATE.inventory_lock:\n        if STATE.stock < quantity:\n            raise HTTPException(status_code=409, detail=\"Out of stock\")\n        STATE.stock -= quantity",
+      "replace": "def _reserve_inventory(quantity: int) -> None:\n    if STATE.stock < quantity:\n        raise HTTPException(status_code=409, detail=\"Out of stock\")\n    import time\n    time.sleep(0.05)\n    STATE.stock -= quantity"
     }
   ],
   "M02": [
     {
-      "find": "    with STATE.lock:\n        return _create_order_core(user, idempotency_key, payload)",
+      "find": "    with _identity_lock(identity):\n        return _create_order_core(user, idempotency_key, payload)",
       "replace": "    return _create_order_core(user, idempotency_key, payload)"
     },
     {
-      "find": "    if existing_order_id:\n        return STATE.orders[existing_order_id]",
-      "replace": "    if existing_order_id:\n        return STATE.orders[existing_order_id]\n    import time\n    time.sleep(0.1)"
+      "find": "    existing_order_id = STATE.idempotency.get(identity)\n\n    if existing_order_id:",
+      "replace": "    existing_order_id = STATE.idempotency.get(identity)\n    import time\n    time.sleep(0.05)\n\n    if existing_order_id:"
     }
   ],
   "M03": [
     {
-      "find": "    if user != \"admin\" and order[\"owner\"] != user:\n        raise HTTPException(status_code=403, detail=\"Order belongs to another user\")\n    return order",
-      "replace": "    return order"
+      "find": "    if user != \"admin\" and order[\"owner\"] != user:\n        raise HTTPException(status_code=403, detail=\"Order belongs to another user\")\n    return _public_order(order)\n\n\n@app.post(\"/orders/{order_id}/cancel\")",
+      "replace": "    return _public_order(order)\n\n\n@app.post(\"/orders/{order_id}/cancel\")"
     }
   ],
   "M04": [
@@ -33,8 +29,8 @@
   ],
   "M05": [
     {
-      "find": "        STATE.processed_events.add(payload.event_id)\n        order = STATE.orders.get(payload.order_id)",
-      "replace": "        order = STATE.orders.get(payload.order_id)"
+      "find": "        STATE.processed_events.add(payload.event_id)\n    return {\"status\": \"processed\"}",
+      "replace": "    return {\"status\": \"processed\"}"
     }
   ],
   "M06": [
@@ -45,26 +41,26 @@
   ],
   "M07": [
     {
-      "find": "    charge = STATE.payment.charge(idempotency_key, amount, payload.payment_token)\n    STATE.stock -= payload.quantity",
-      "replace": "    STATE.stock -= payload.quantity\n    charge = STATE.payment.charge(idempotency_key, amount, payload.payment_token)"
+      "find": "            order[\"failure_status\"] = 402\n            _release_inventory_once(order)\n        raise",
+      "replace": "            order[\"failure_status\"] = 402\n        raise"
     }
   ],
   "M08": [
     {
-      "find": "    charge = STATE.payment.charge(idempotency_key, amount, payload.payment_token)",
-      "replace": "    charge = STATE.payment.charge(f\"{idempotency_key}-{uuid4().hex}\", amount, payload.payment_token)"
+      "find": "            order[\"payment_key\"], order[\"total\"], order[\"payment_token\"]",
+      "replace": "            f'{order[\"payment_key\"]}:{uuid4().hex}', order[\"total\"], order[\"payment_token\"]"
     }
   ],
   "M09": [
     {
-      "find": "        if order[\"status\"] == \"cancelled\":\n            return order\n        order[\"status\"] = \"cancelled\"",
-      "replace": "        order[\"status\"] = \"cancelled\""
+      "find": "        if order[\"status\"] == OrderStatus.CANCELLED:\n            return _public_order(order)\n        if order[\"status\"] != OrderStatus.PAID:\n            raise HTTPException(status_code=409, detail=\"Only paid orders can be cancelled\")\n        order[\"status\"] = OrderStatus.CANCELLED\n        _release_inventory_once(order)",
+      "replace": "        if order[\"status\"] not in {OrderStatus.PAID, OrderStatus.CANCELLED}:\n            raise HTTPException(status_code=409, detail=\"Only paid orders can be cancelled\")\n        order[\"status\"] = OrderStatus.CANCELLED\n        STATE.stock += order[\"quantity\"]"
     }
   ],
   "M10": [
     {
-      "find": "    amount = STATE.price * payload.quantity",
-      "replace": "    amount = payload.quoted_total if payload.quoted_total is not None else STATE.price * payload.quantity"
+      "find": "            \"total\": STATE.price * payload.quantity,",
+      "replace": "            \"total\": payload.quoted_total if payload.quoted_total is not None else STATE.price * payload.quantity,"
     }
   ]
 }

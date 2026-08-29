@@ -1,6 +1,6 @@
 # FlashCart benchmark
 
-FlashCart is the private mutation benchmark used to compare `baseline-v0` with later EdgeCase Forge iterations.
+FlashCart v1.1.0 is the private mutation benchmark used to compare the frozen baseline with later EdgeCase Forge iterations.
 
 ## Structure
 
@@ -17,5 +17,4 @@ python benchmarks/flashcart/build_variants.py
 python -m pytest benchmarks/flashcart/oracle -q
 ```
 
-The evaluation runner must copy exactly one generated case into a neutral temporary directory. It must not provide case IDs, sibling variants, mutation definitions, oracle tests, or this README to the agent.
-
+The evaluation runner must copy exactly one generated case into a neutral temporary directory. It must not provide case IDs, sibling variants, mutation definitions, oracle tests, or this README to the agent. The v1.0.x runs are development-only and must never be merged into a v1.1.0 score.

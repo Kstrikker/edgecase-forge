@@ -1,5 +1,5 @@
 {
-  "benchmark_version": "flashcart-v1.0.1",
+  "benchmark_version": "flashcart-v1.1.0",
   "status": "frozen",
   "clean_control": "C00",
   "primary_metric": "correctly_killed_mutants / 10",
@@ -27,7 +27,7 @@
       "id": "M04",
       "category": "webhook-authentication",
       "invariant": "Invalid webhook HMAC causes no state change",
-      "oracle": "Tamper with payload after signing"
+      "oracle": "Submit a request with an invalid signature"
     },
     {
       "id": "M05",
@@ -44,7 +44,7 @@
     {
       "id": "M07",
       "category": "transaction-rollback",
-      "invariant": "Failed payment leaves no confirmed order, charge or lost inventory",
+      "invariant": "A definite decline leaves no charge, paid order or lost inventory",
       "oracle": "Use deterministic payment decline"
     },
     {
@@ -57,7 +57,7 @@
       "id": "M09",
       "category": "state-transition",
       "invariant": "An order transitions to cancelled once and restores stock once",
-      "oracle": "Cancel the same paid order twice concurrently"
+      "oracle": "Cancel the same paid order twice"
     },
     {
       "id": "M10",

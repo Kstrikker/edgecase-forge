@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### FlashCart v1.1.0 integrity rebuild
+
+- Replaced the clean checkout flow with an explicit payment state machine and durable inventory reservation.
+- Kept the module-level state object stable across resets so imported test references remain valid.
+- Made timeout retries reuse one order, reservation and payment operation.
+- Stopped missing-order webhooks from consuming their event IDs and prevented terminal-state regression.
+- Rebuilt all ten mutants as isolated, single-invariant faults.
+- Added a 100-cell cross-oracle matrix plus clean regression tests; 115 FlashCart checks now pass.
+- Invalidated v1.0.x benchmark runs as development evidence; they must not be included in the final score.
+
 ### Baseline compatibility hardening
 
 - Accept a single evidence string and normalize it to a one-item list.
