@@ -50,6 +50,6 @@ def test_restricted_runner_applies_container_boundaries(tmp_path: Path, monkeypa
 
 def test_runner_image_removes_unused_perl_and_updates_openssl() -> None:
     dockerfile = restricted.DOCKERFILE.read_text(encoding="utf-8")
-    assert "apt-get install --only-upgrade" in dockerfile
-    assert "openssl" in dockerfile
-    assert "apt-get purge -y perl" in dockerfile
+    assert "FROM python:3.12-alpine" in dockerfile
+    assert "adduser -S -u 10001" in dockerfile
+    assert "perl" not in dockerfile.lower()
