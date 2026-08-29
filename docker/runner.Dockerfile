@@ -1,5 +1,7 @@
 FROM python:3.12-alpine
 
+RUN apk upgrade --no-cache openssl
+
 RUN addgroup -S runner \
     && adduser -S -u 10001 -G runner runner
 
