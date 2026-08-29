@@ -89,6 +89,7 @@ Only one integrator changes the main branch. Suggestions from other models enter
 - Neutral export removes evaluator hooks and case identifiers.
 - Variant hashes are frozen in `expected_hashes.json`.
 - Restricted Docker backend implemented; next: run its preflight, then a two-case Gemini pilot, then freeze the full baseline.
+- `docker-smoke` verifies a real disposable pytest, read-only source mount and network denial before any provider call.
 - Freeze and adjudicate raw evidence before Iteration 1 begins.
 
 ### Gemini pilot — passed

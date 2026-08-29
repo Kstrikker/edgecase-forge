@@ -1,14 +1,55 @@
 from __future__ import annotations
 
+import json
+import tempfile
 from pathlib import Path
 
 import typer
 
 from edgecase_forge.baseline import BaselineScanner
+from edgecase_forge.baseline.executor import execution_payload
+from edgecase_forge.baseline.restricted import ensure_runner_image, run_restricted_pytest
 from edgecase_forge.benchmark import run_flashcart_suite
+from benchmarks.flashcart import export_agent_repo
 from edgecase_forge.llm.registry import PROVIDERS, build_provider
 
 app = typer.Typer(no_args_is_help=True, help="Evidence-first adversarial API testing")
+
+
+@app.command("docker-smoke")
+def docker_smoke() -> None:
+    """Run a disposable pytest through the restricted Docker backend."""
+    ensure_runner_image()
+    with tempfile.TemporaryDirectory(prefix="edgecase-docker-smoke-") as temporary:
+        root = Path(temporary)
+        repo = export_agent_repo("C00", root / "repo")
+        test_file = repo / "test_generated.py"
+        test_file.write_text(
+            "import socket\n"
+            "from pathlib import Path\n\n"
+            "def test_read_only_repo_and_network_boundary():\n"
+            "    assert Path('main.py').exists()\n"
+            "    probe = socket.socket()\n"
+            "    probe.settimeout(0.2)\n"
+            "    try:\n"
+            "        probe.connect(('example.com', 80))\n"
+            "    except OSError:\n"
+            "        return\n"
+            "    finally:\n"
+            "        probe.close()\n"
+            "    raise AssertionError('network unexpectedly reachable')\n",
+            encoding="utf-8",
+        )
+        result = run_restricted_pytest(
+            repo=repo,
+            test_file=test_file,
+            junit_path=root / "artifacts" / "junit.xml",
+        )
+        typer.echo(json.dumps(execution_payload(result), indent=2))
+        if not result.scoreable_harness or not result.nodes or any(
+            node.outcome != "passed" for node in result.nodes
+        ):
+            raise typer.Exit(code=1)
 
 
 @app.command("providers")

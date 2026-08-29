@@ -14,6 +14,7 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 python -m pip install -e ".[dev,benchmark]"
 edgecase-forge providers
 edgecase-forge baseline-scan --repo ./path/to/trusted/repository --provider mock
+edgecase-forge docker-smoke
 edgecase-forge benchmark-run --provider mock
 pytest
 ```
