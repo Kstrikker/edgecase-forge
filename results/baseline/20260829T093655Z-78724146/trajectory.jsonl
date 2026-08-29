@@ -1,0 +1,3 @@
+{"event": "model_request", "prompt_version": "baseline-v0", "prompt_sha256": "c434be25577bca54be7f3e28427f78d2368273723bab31e24b5c51e9c76ce471", "repository_context_chars": 39737}
+{"event": "model_response", "provider": "mock", "model": "deterministic-baseline-v0", "request_id": "mock-request", "latency_seconds": 0.0, "usage": {"input_tokens": 0, "output_tokens": 0}, "validated_output": {"summary": "Deterministic no-finding response used for plumbing tests.", "findings": [], "generated_test_code": ""}}
+{"event": "pytest_execution", "executed": false, "exit_code": null, "stdout": "", "stderr": "", "timed_out": false}

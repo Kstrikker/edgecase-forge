@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+.env
+dist/
+build/
+results/**/*.json
+!results/**/.gitkeep
+trajectories/**/*.json
+!trajectories/**/.gitkeep
+

@@ -1,0 +1,51 @@
+# Baseline architecture
+
+## Runtime connection
+
+```text
+CLI
+ └─ BaselineScanner
+     ├─ Repository collector (read-only, secret-aware)
+     ├─ Frozen baseline prompt
+     ├─ LLMProvider protocol
+     │   ├─ MockProvider
+     │   └─ OpenAICompatibleProvider
+     │       ├─ Gemini profile
+     │       ├─ Grok profile
+     │       └─ OpenAI profile
+     ├─ Local Pydantic validation + one semantic repair
+     ├─ Optional trusted-repository pytest execution
+     └─ Report, metadata, trajectory and execution log
+```
+
+The benchmark evaluator sits outside this runtime. It gives the agent an opaque repository, then independently runs the generated tests against clean and mutant builds. This prevents the model from seeing the answer key and prevents prose-only claims from earning credit.
+
+## Provider boundary
+
+The core depends only on `LLMProvider.generate_json(messages, response_model)`. Provider profiles configure base URL, key environment variable and locked model. Baseline requests portable JSON-object output and validates locally instead of sending a complex provider-specific JSON Schema.
+
+Provider capabilities are explicit. Unsupported strict schema or tool behavior must fail locally rather than silently degrading or producing provider-specific baseline behavior.
+
+## Security boundary
+
+- Repository collection excludes common secrets, virtual environments, Git data, evaluator oracles and solution directories.
+- API keys are read from environment variables and never enter request trajectories.
+- Generated test code is written beneath the run artifact directory.
+- Test execution requires an explicit flag and is currently restricted to trusted fixtures.
+- Docker sandboxing and production-source write protection are Iteration 2 requirements before arbitrary repositories are supported.
+
+## Artifact contract
+
+Every run writes:
+
+```text
+results/baseline/<run-id>/
+├── generated_tests/
+├── report.json
+├── run-metadata.json
+├── trajectory.jsonl
+└── execution.log
+```
+
+The dashboard will consume these files later. It will not invent a separate evidence format.
+

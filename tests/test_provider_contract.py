@@ -1,0 +1,80 @@
+import json
+
+import httpx
+import pytest
+
+from edgecase_forge.llm.base import Message
+from edgecase_forge.llm.capabilities import PORTABLE_OPENAI_COMPATIBLE
+from edgecase_forge.llm.errors import AuthenticationError, ResponseValidationError
+from edgecase_forge.llm.openai_compatible import OpenAICompatibleProvider
+from edgecase_forge.llm.schemas import BaselineAnalysis
+
+
+def _response(content: str, status: int = 200) -> httpx.Response:
+    if status != 200:
+        return httpx.Response(status, json={"error": "rejected"})
+    return httpx.Response(
+        200,
+        json={
+            "choices": [{"message": {"content": content}}],
+            "usage": {"prompt_tokens": 10, "completion_tokens": 20},
+        },
+        headers={"x-request-id": "req-1"},
+    )
+
+
+def _provider(handler) -> OpenAICompatibleProvider:
+    return OpenAICompatibleProvider(
+        name="gemini",
+        model="locked-model",
+        api_key="test-key",
+        base_url="https://example.test/v1",
+        capabilities=PORTABLE_OPENAI_COMPATIBLE,
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+
+def test_normalizes_valid_json_response() -> None:
+    payload = {"summary": "ok", "findings": [], "generated_test_code": ""}
+    provider = _provider(lambda request: _response(json.dumps(payload)))
+    parsed, result = provider.generate_json([Message("user", "scan")], BaselineAnalysis)
+    assert parsed.summary == "ok"
+    assert result.usage.input_tokens == 10
+    assert result.request_id == "req-1"
+
+
+def test_repair_prompt_contains_validation_error_and_runs_once() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if len(requests) == 1:
+            return _response('{"summary": "missing fields"}')
+        body = json.loads(request.content)
+        assert "failed validation with this error" in body["messages"][-1]["content"]
+        assert "findings" in body["messages"][-1]["content"]
+        return _response('{"summary":"fixed","findings":[],"generated_test_code":""}')
+
+    parsed, _ = _provider(handler).generate_json([Message("user", "scan")], BaselineAnalysis)
+    assert parsed.summary == "fixed"
+    assert len(requests) == 2
+
+
+def test_second_invalid_response_fails() -> None:
+    provider = _provider(lambda request: _response("{}"))
+    with pytest.raises(ResponseValidationError):
+        provider.generate_json([Message("user", "scan")], BaselineAnalysis)
+
+
+def test_authentication_error_is_not_repaired() -> None:
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return _response("", status=401)
+
+    with pytest.raises(AuthenticationError):
+        _provider(handler).generate_json([Message("user", "scan")], BaselineAnalysis)
+    assert calls == 1
+

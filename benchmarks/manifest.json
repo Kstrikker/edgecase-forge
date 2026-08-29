@@ -1,0 +1,70 @@
+{
+  "benchmark_version": "flashcart-v1-draft",
+  "status": "specification-frozen-fixtures-pending",
+  "clean_control": "C00",
+  "primary_metric": "correctly_killed_mutants / 10",
+  "hard_case": "M08",
+  "mutants": [
+    {
+      "id": "M01",
+      "category": "concurrency",
+      "invariant": "Successful purchased quantity never exceeds initial stock and stock never becomes negative",
+      "oracle": "Twenty concurrent orders against stock five"
+    },
+    {
+      "id": "M02",
+      "category": "idempotency",
+      "invariant": "Same user, key and body create exactly one order and charge",
+      "oracle": "Concurrent duplicate order requests"
+    },
+    {
+      "id": "M03",
+      "category": "authorization",
+      "invariant": "A buyer can read only their own orders",
+      "oracle": "Buyer B requests Buyer A order"
+    },
+    {
+      "id": "M04",
+      "category": "webhook-authentication",
+      "invariant": "Invalid webhook HMAC causes no state change",
+      "oracle": "Tamper with payload after signing"
+    },
+    {
+      "id": "M05",
+      "category": "webhook-replay",
+      "invariant": "One webhook event ID changes payment state at most once",
+      "oracle": "Replay an identical valid event"
+    },
+    {
+      "id": "M06",
+      "category": "validation",
+      "invariant": "Order quantity must be positive and invalid input cannot change stock",
+      "oracle": "Submit quantity zero and negative two"
+    },
+    {
+      "id": "M07",
+      "category": "transaction-rollback",
+      "invariant": "Failed payment leaves no confirmed order, charge or lost inventory",
+      "oracle": "Use deterministic payment decline"
+    },
+    {
+      "id": "M08",
+      "category": "retry-side-effect",
+      "invariant": "One logical checkout produces at most one provider charge",
+      "oracle": "Use deterministic timeout-once payment behavior"
+    },
+    {
+      "id": "M09",
+      "category": "state-transition",
+      "invariant": "An order transitions to cancelled once and restores stock once",
+      "oracle": "Cancel the same paid order twice concurrently"
+    },
+    {
+      "id": "M10",
+      "category": "price-integrity",
+      "invariant": "Order total equals catalog price multiplied by accepted quantity",
+      "oracle": "Submit a manipulated client total"
+    }
+  ]
+}
+
