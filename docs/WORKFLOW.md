@@ -12,8 +12,8 @@ EdgeCase Forge improves bug discovery over a generic coding agent by combining b
 |---|---|---|
 | Benchmark contract | Complete | FlashCart v1.1.0: clean control, 10 opaque mutants, frozen hashes and a 100-cell isolation matrix |
 | Baseline | Complete | Official run adjudicated: 8/10 confirmed kills, 80% mutation score, zero blockers |
-| Iteration 1 | Pilot refinement | First pilot exposed oracle-order and priority-selection gaps; contract-v1.1 hardened offline |
-| Iteration 2 | Blocked by Iteration 1 | Stateful attackers reproduce concurrency, replay and retry failures |
+| Iteration 1 | Complete | Contract v1.1 adds one confirmed M10 kill; projected full-suite score 90% |
+| Iteration 2 | Ready for pilot | Stateful v1.0 enforces retry ledger-oracle ordering through bounded repair |
 | Iteration 3 | Blocked by Iteration 2 | Independent executable verifier reduces false positives |
 | Final | Blocked by evidence | Dashboard, comparison report, trajectories, docs and video complete |
 
@@ -142,3 +142,19 @@ Only one integrator changes the main branch. Suggestions from other models enter
 - Contract v1.1 now converts volatile effect identities and client-controlled monetary totals into ranked mandatory targets.
 - Required business-oracle assertions must execute before secondary response-status assertions.
 - The first pilot remains preserved and is not retroactively rescored.
+
+### Iteration 1 v1.1 pilot — complete
+
+- C00 remained clean with no reported finding.
+- M10 passed clean and first failed on the authoritative order-total assertion; it is confirmed.
+- M08 remained rejected because the retry-status assertion failed before its charge-ledger assertion executed.
+- The adjudicated subset score is 1/2; `subset_selection` correctly prevents official-score eligibility.
+- No model-output, invalid-test, integrity or evaluator-infrastructure errors occurred.
+
+### Iteration 2 stateful attacker — ready for pilot
+
+- Deterministic attack plans encode stimulus order and the primary business oracle.
+- Retry tests must issue two HTTP calls and assert an observable provider ledger/effect count.
+- Generated pytest AST validation rejects retry-status assertions that mask the primary ledger oracle.
+- The exact ordering error is passed into the existing single semantic repair attempt.
+- Stateful artifacts and agent identity are independently frozen for fair comparison.

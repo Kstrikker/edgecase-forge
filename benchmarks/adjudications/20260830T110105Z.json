@@ -1,0 +1,25 @@
+{
+  "schema_version": "adjudication-decisions-v1",
+  "suite_id": "20260830T110105Z",
+  "suite_fingerprint_sha256": "5e3f6c5c9362a7b3ecd7894bc98a099bffd17189d5777f377630ff14a5cd6fa7",
+  "reviewer": "independent-manual-evidence-review",
+  "review_policy": "Confirm only when the first meaningful mutant assertion failure directly demonstrates the frozen expected invariant.",
+  "decisions": [
+    {
+      "repetition": 1,
+      "case_id": "M08",
+      "test_sha256": "d6347d72ea8caf85eace502f73d9e2e2851fdb716722e8970157b85712be6ce4",
+      "differential_sha256": "2ba8195e6a25c6930a76251e6ec3b20bc98cfeb5524a80a2b81e47ee49e9d98f",
+      "decision": "rejected",
+      "reason": "The mutant fails on the retry HTTP status before the provider charge-ledger assertion executes, so duplicate charging is not directly demonstrated."
+    },
+    {
+      "repetition": 1,
+      "case_id": "M10",
+      "test_sha256": "77a08447d43501d756167b308bd7fdfec8989516e468066f8f61b087a8e7ade7",
+      "differential_sha256": "8bc078bada754b47bb37199ed442808cdfa75be2bdc2e28263235d64e82f58ae",
+      "decision": "confirmed",
+      "reason": "The clean test passes and the mutant first fails because the returned authoritative total is 10 instead of catalog price 1000, directly proving the price-integrity invariant."
+    }
+  ]
+}

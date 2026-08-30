@@ -15,6 +15,7 @@ python -m pip install -e ".[dev,benchmark]"
 edgecase-forge providers
 edgecase-forge baseline-scan --repo ./path/to/trusted/repository --provider mock
 edgecase-forge contract-scan --repo ./path/to/trusted/repository --provider mock
+edgecase-forge stateful-scan --repo ./path/to/trusted/repository --provider mock
 edgecase-forge docker-smoke
 edgecase-forge benchmark-run --provider mock
 pytest
@@ -33,9 +34,12 @@ Select the agent explicitly for measured comparisons:
 ```bash
 edgecase-forge benchmark-run --agent baseline --provider mock --case C00
 edgecase-forge benchmark-run --agent contract --provider mock --case C00
+edgecase-forge benchmark-run --agent stateful --provider mock --case C00
 ```
 
 Contract runs add `repository-map.json` and an `invariants` section to each report. High-risk flows such as volatile external-effect identities and client-controlled monetary totals become ranked priority targets with required executable oracles. Agent name, version and prompt hash are included in the frozen suite fingerprint, so a baseline suite cannot be resumed as an Iteration 1 suite.
+
+Stateful runs additionally write `attack-plan.json`. For retry-side-effect targets, the response schema is strengthened at runtime: a generated test is invalid when it asserts the retry status before the provider-ledger oracle. That precise validation error receives the adapter's single bounded repair attempt.
 
 For a low-cost rehearsal, select individual cases by repeating `--case`, for example `--case C00 --case M01`. A subset run is always marked ineligible for an official score.
 

@@ -13,6 +13,7 @@ from pathlib import Path
 from benchmarks.flashcart import export_agent_repo
 from edgecase_forge.baseline import BaselineScanner
 from edgecase_forge.contract import ContractScanner
+from edgecase_forge.stateful import StatefulScanner
 from edgecase_forge.baseline.executor import ExecutionResult, run_generated_pytest
 from edgecase_forge.baseline.restricted import ensure_runner_image, run_restricted_pytest
 from edgecase_forge.llm.base import LLMProvider
@@ -635,8 +636,9 @@ def _build_scanner(agent: str, provider: LLMProvider) -> BaselineScanner:
     scanners = {
         "baseline": BaselineScanner,
         "contract": ContractScanner,
+        "stateful": StatefulScanner,
     }
     scanner_type = scanners.get(agent)
     if scanner_type is None:
-        raise ValueError("agent must be 'baseline' or 'contract'")
+        raise ValueError("agent must be 'baseline', 'contract', or 'stateful'")
     return scanner_type(provider)
