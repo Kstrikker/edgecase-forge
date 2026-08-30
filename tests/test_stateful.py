@@ -33,27 +33,6 @@ def test_retry_charge_count():
     assert response2.status_code == 201
 """
 
-BAD_BOUNDARY_TEST = """\
-def test_quantity_boundaries():
-    initial_stock = STATE.stock
-    zero_response = client.post('/orders', json={'quantity': 0})
-    negative_response = client.post('/orders', json={'quantity': -2})
-    assert zero_response.status_code == 422
-    assert negative_response.status_code == 422
-"""
-
-GOOD_BOUNDARY_TEST = """\
-def test_quantity_boundaries():
-    initial_stock = STATE.stock
-    zero_response = client.post('/orders', json={'quantity': 0})
-    negative_response = client.post('/orders', json={'quantity': -2})
-    assert zero_response.status_code == 422
-    assert negative_response.status_code == 422
-    assert STATE.stock == initial_stock
-    assert not STATE.orders
-    assert not STATE.payment.charges
-"""
-
 
 def _payload(code: str) -> dict:
     return {
@@ -85,45 +64,9 @@ def _payload(code: str) -> dict:
     }
 
 
-def _boundary_payload(code: str) -> dict:
-    return {
-        "summary": "Quantity validation is missing.",
-        "invariants": [
-            {
-                "invariant_id": "INV-01",
-                "endpoint": "POST /orders",
-                "category": "validation",
-                "invariant": "Order quantity must be positive.",
-                "evidence": ["The quantity field has no lower bound."],
-                "oracle": "Submit zero and negative quantities and inspect state.",
-            }
-        ],
-        "findings": [
-            {
-                "invariant_id": "INV-01",
-                "title": "Non-positive quantity accepted",
-                "severity": "high",
-                "endpoint": "POST /orders",
-                "claim": "Invalid quantities can mutate inventory.",
-                "evidence": ["The request model accepts any integer."],
-                "test_file": "test_generated.py",
-                "test_name": "test_quantity_boundaries",
-                "reproduced": False,
-            }
-        ],
-        "generated_test_code": code,
-    }
-
-
 @pytest.fixture(scope="module")
 def retry_plan():
     repository_map = build_repository_map(Path("benchmarks/flashcart/generated/M08"))
-    return build_attack_plan(repository_map)
-
-
-@pytest.fixture(scope="module")
-def boundary_plan():
-    repository_map = build_repository_map(Path("benchmarks/flashcart/generated/M06"))
     return build_attack_plan(repository_map)
 
 
@@ -141,63 +84,6 @@ def test_stateful_schema_rejects_masked_ledger_oracle(retry_plan) -> None:
 
     accepted = model.model_validate(_payload(GOOD_TEST))
     assert accepted.findings[0].test_name == "test_retry_charge_count"
-
-
-def test_boundary_plan_requires_zero_negative_and_unchanged_state(boundary_plan) -> None:
-    assert boundary_plan.target_signal == "missing_numeric_request_boundary"
-    assert [step.sequence for step in boundary_plan.steps] == [1, 2, 3, 4, 5]
-    assert "quantity zero" in boundary_plan.steps[1].action.lower()
-    assert "negative quantity" in boundary_plan.steps[2].action.lower()
-    assert "no orders or charges" in boundary_plan.steps[4].action.lower()
-
-
-def test_stateful_schema_rejects_status_only_boundary_evidence(boundary_plan) -> None:
-    model = stateful_analysis_model(boundary_plan)
-    with pytest.raises(ValidationError, match="unchanged stock"):
-        model.model_validate(_boundary_payload(BAD_BOUNDARY_TEST))
-
-    accepted = model.model_validate(_boundary_payload(GOOD_BOUNDARY_TEST))
-    assert accepted.findings[0].test_name == "test_quantity_boundaries"
-
-
-def test_boundary_validation_error_enters_bounded_provider_repair(boundary_plan) -> None:
-    model = stateful_analysis_model(boundary_plan)
-    requests: list[httpx.Request] = []
-
-    def response(payload: dict) -> httpx.Response:
-        return httpx.Response(
-            200,
-            json={
-                "choices": [
-                    {"message": {"content": json.dumps(payload)}, "finish_reason": "stop"}
-                ],
-                "usage": {"prompt_tokens": 10, "completion_tokens": 20},
-            },
-        )
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        requests.append(request)
-        if len(requests) == 1:
-            return response(_boundary_payload(BAD_BOUNDARY_TEST))
-        repair = json.loads(request.content)["messages"][-1]["content"]
-        assert "unchanged stock and empty orders and charges" in repair
-        return response(_boundary_payload(GOOD_BOUNDARY_TEST))
-
-    provider = OpenAICompatibleProvider(
-        name="gemini",
-        model="test-model",
-        api_key="test-key",
-        base_url="https://example.test/v1",
-        capabilities=STRICT_OPENAI_COMPATIBLE,
-        client=httpx.Client(transport=httpx.MockTransport(handler)),
-        sleep=lambda _: None,
-    )
-    parsed, result = provider.generate_json([Message("user", "scan")], model)
-
-    assert parsed.generated_test_code == GOOD_BOUNDARY_TEST
-    assert len(requests) == 2
-    assert result.semantic_attempts == 2
-    assert result.repair_used is True
 
 
 def test_provider_repair_receives_exact_oracle_order_error(retry_plan) -> None:
@@ -249,7 +135,7 @@ def test_stateful_scanner_writes_attack_plan(tmp_path: Path) -> None:
     report = json.loads((run_dir / "report.json").read_text(encoding="utf-8"))
     attack_plan = json.loads((run_dir / "attack-plan.json").read_text(encoding="utf-8"))
 
-    assert metadata["agent_version"] == "stateful-v1.1"
+    assert metadata["agent_version"] == "stateful-v1.0"
     assert report["attack_target_signal"] == "unstable_external_effect_identity"
     assert attack_plan["steps"][3]["action"] == "Assert the provider effect ledger count"
 
@@ -263,4 +149,4 @@ def test_stateful_agent_has_separate_frozen_benchmark_identity(tmp_path: Path) -
     )
     config = json.loads((suite / "suite-config.json").read_text(encoding="utf-8"))
     assert config["frozen"]["agent"]["agent"] == "stateful_attacker"
-    assert config["frozen"]["agent"]["agent_version"] == "stateful-v1.1"
+    assert config["frozen"]["agent"]["agent_version"] == "stateful-v1.0"

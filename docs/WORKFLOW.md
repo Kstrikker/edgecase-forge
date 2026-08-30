@@ -13,8 +13,8 @@ EdgeCase Forge improves bug discovery over a generic coding agent by combining b
 | Benchmark contract | Complete | FlashCart v1.1.0: clean control, 10 opaque mutants, frozen hashes and a 100-cell isolation matrix |
 | Baseline | Complete | Official run adjudicated: 8/10 confirmed kills, 80% mutation score, zero blockers |
 | Iteration 1 | Complete | Contract v1.1 adds one confirmed M10 kill; projected full-suite score 90% |
-| Iteration 2 | Complete | Stateful v1.0 achieved 9/10 confirmed kills, 90% mutation score and zero blockers |
-| Iteration 3 | Ready for pilot | Stateful v1.1 adds deterministic zero/negative boundary attacks with state-preservation proof |
+| Iteration 2 | Ready for pilot | Stateful v1.0 enforces retry ledger-oracle ordering through bounded repair |
+| Iteration 3 | Blocked by Iteration 2 | Independent executable verifier reduces false positives |
 | Final | Blocked by evidence | Dashboard, comparison report, trajectories, docs and video complete |
 
 ## Fixed build order

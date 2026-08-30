@@ -84,16 +84,6 @@ def test_mapper_surfaces_routes_state_effects_and_retry_risks() -> None:
     assert mutant.priority_targets[0].signal == "client_input_in_authoritative_total"
     assert "provider amount" in mutant.priority_targets[0].required_oracle
 
-    boundary_mutant = build_repository_map(Path("benchmarks/flashcart/generated/M06"))
-    boundary_orders = next(
-        route
-        for route in boundary_mutant.routes
-        if route.method == "POST" and route.path == "/orders"
-    )
-    assert "missing_numeric_request_boundary" in boundary_orders.risk_signals
-    assert boundary_mutant.priority_targets[0].signal == "missing_numeric_request_boundary"
-    assert "negative quantity" in boundary_mutant.priority_targets[0].required_oracle
-
 
 def test_mapper_is_deterministic_and_ignores_private_directories(tmp_path: Path) -> None:
     repo = tmp_path / "repo"

@@ -2,9 +2,9 @@
 
 EdgeCase Forge is an evidence-first AI QA agent for compatible FastAPI repositories. It inspects a repository, proposes adversarial tests, executes generated pytest tests against trusted benchmark fixtures, and records reproducible evidence.
 
-## Current milestone: Iteration 3 boundary attacker
+## Current milestone: Iteration 1 contract mapper
 
-The frozen baseline remains available for comparison. The current stateful agent combines a deterministic, read-only Python AST contract mapper with executable attack plans for retry side effects, authoritative prices, and missing numeric request boundaries. One model call receives that map plus prioritized source and must link every finding and generated test to an explicit invariant.
+The frozen baseline remains available for comparison. Iteration 1 adds a deterministic, read-only Python AST mapper that discovers FastAPI routes, reachable handlers, guards, shared-state transitions, external effects and risk signals. One model call receives that map plus prioritized source and must link every finding and generated test to an explicit invariant.
 
 ## Quick start
 
@@ -39,7 +39,7 @@ edgecase-forge benchmark-run --agent stateful --provider mock --case C00
 
 Contract runs add `repository-map.json` and an `invariants` section to each report. High-risk flows such as volatile external-effect identities and client-controlled monetary totals become ranked priority targets with required executable oracles. Agent name, version and prompt hash are included in the frozen suite fingerprint, so a baseline suite cannot be resumed as an Iteration 1 suite.
 
-Stateful runs additionally write `attack-plan.json`. For retry-side-effect targets, the response schema rejects tests that assert retry status before the provider-ledger oracle. For missing numeric boundaries, it requires zero and negative requests, both HTTP 422 assertions, unchanged stock, and empty order and charge ledgers. Every precise validation error receives the adapter's single bounded repair attempt.
+Stateful runs additionally write `attack-plan.json`. For retry-side-effect targets, the response schema is strengthened at runtime: a generated test is invalid when it asserts the retry status before the provider-ledger oracle. That precise validation error receives the adapter's single bounded repair attempt.
 
 For a low-cost rehearsal, select individual cases by repeating `--case`, for example `--case C00 --case M01`. A subset run is always marked ineligible for an official score.
 

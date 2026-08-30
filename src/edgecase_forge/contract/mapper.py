@@ -31,14 +31,6 @@ EFFECT_METHODS = {
     "send",
     "transfer",
 }
-BOUNDARY_FIELD_TOKENS = {
-    "count",
-    "items",
-    "quantity",
-    "seats",
-    "tickets",
-    "units",
-}
 
 
 @dataclass(frozen=True)
@@ -155,7 +147,6 @@ def _module_routes(tree: ast.Module, source: str) -> list[RouteContract]:
         for node in tree.body
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
     }
-    unbounded_models = _unbounded_numeric_model_fields(tree)
     discovered: list[RouteContract] = []
     for handler in functions.values():
         route = _route_decorator(handler)
@@ -167,12 +158,7 @@ def _module_routes(tree: ast.Module, source: str) -> list[RouteContract]:
         facts = _Facts(set(parameters))
         for function in reachable:
             facts.visit(function)
-        unbounded_fields = _used_unbounded_request_fields(
-            handler,
-            reachable,
-            unbounded_models,
-        )
-        risks = _risk_signals(reachable, facts, unbounded_fields)
+        risks = _risk_signals(reachable, facts)
         discovered.append(
             RouteContract(
                 method=method.upper(),
@@ -309,9 +295,7 @@ class _Facts(ast.NodeVisitor):
 
 
 def _risk_signals(
-    functions: tuple[ast.FunctionDef | ast.AsyncFunctionDef, ...],
-    facts: _Facts,
-    unbounded_fields: tuple[str, ...],
+    functions: tuple[ast.FunctionDef | ast.AsyncFunctionDef, ...], facts: _Facts
 ) -> set[str]:
     text = " ".join(_safe_unparse(function) for function in functions).lower()
     risks: set[str] = set()
@@ -333,88 +317,7 @@ def _risk_signals(
         risks.add("resource_ownership")
     if facts.external_effects and facts.client_total_assignment:
         risks.add("client_input_in_authoritative_total")
-    if unbounded_fields and facts.state_writes:
-        risks.add("missing_numeric_request_boundary")
     return risks
-
-
-def _unbounded_numeric_model_fields(tree: ast.Module) -> dict[str, tuple[str, ...]]:
-    models: dict[str, tuple[str, ...]] = {}
-    for node in tree.body:
-        if not isinstance(node, ast.ClassDef) or not any(
-            _safe_unparse(base).endswith("BaseModel") for base in node.bases
-        ):
-            continue
-        fields: list[str] = []
-        for statement in node.body:
-            if not isinstance(statement, ast.AnnAssign) or not isinstance(
-                statement.target, ast.Name
-            ):
-                continue
-            name = statement.target.id
-            if (
-                _is_boundary_field_name(name)
-                and _is_integer_annotation(statement.annotation)
-                and not _has_explicit_lower_bound(statement)
-            ):
-                fields.append(name)
-        if fields:
-            models[node.name] = tuple(sorted(fields))
-    return models
-
-
-def _used_unbounded_request_fields(
-    handler: ast.FunctionDef | ast.AsyncFunctionDef,
-    reachable: tuple[ast.FunctionDef | ast.AsyncFunctionDef, ...],
-    unbounded_models: dict[str, tuple[str, ...]],
-) -> tuple[str, ...]:
-    reachable_text = " ".join(ast.unparse(function) for function in reachable)
-    fields: set[str] = set()
-    arguments = (*handler.args.posonlyargs, *handler.args.args, *handler.args.kwonlyargs)
-    for argument in arguments:
-        model_name = _annotation_name(argument.annotation)
-        for field in unbounded_models.get(model_name, ()):
-            expression = f"{argument.arg}.{field}"
-            if expression in reachable_text:
-                fields.add(expression)
-    return tuple(sorted(fields))
-
-
-def _annotation_name(annotation: ast.expr | None) -> str:
-    if isinstance(annotation, ast.Name):
-        return annotation.id
-    if isinstance(annotation, ast.Attribute):
-        return annotation.attr
-    return ""
-
-
-def _is_boundary_field_name(name: str) -> bool:
-    lowered = name.lower()
-    return any(token in lowered.split("_") for token in BOUNDARY_FIELD_TOKENS)
-
-
-def _is_integer_annotation(annotation: ast.expr) -> bool:
-    return any(
-        isinstance(node, ast.Name) and node.id == "int"
-        for node in ast.walk(annotation)
-    )
-
-
-def _has_explicit_lower_bound(statement: ast.AnnAssign) -> bool:
-    nodes: tuple[ast.AST, ...] = (
-        statement.annotation,
-        *((statement.value,) if statement.value is not None else ()),
-    )
-    for root in nodes:
-        for node in ast.walk(root):
-            if not isinstance(node, ast.Call):
-                continue
-            terminal = _call_terminal(node.func).lower()
-            if terminal not in {"field", "conint"}:
-                continue
-            if any(keyword.arg in {"ge", "gt"} for keyword in node.keywords):
-                return True
-    return False
 
 
 def _attribute_chain(node: ast.Attribute) -> str:
@@ -500,34 +403,14 @@ def _priority_targets(routes: list[RouteContract]) -> tuple[PriorityTarget, ...]
                     "A request monetary field can become the authoritative order amount.",
                 )
             )
-        if "missing_numeric_request_boundary" in signals:
-            candidates.append(
-                (
-                    2,
-                    "missing_numeric_request_boundary",
-                    route,
-                    "A quantity-like integer request field reaches shared-state "
-                    "mutation without an explicit lower bound.",
-                )
-            )
     candidates.sort(key=lambda item: (item[0], item[2].path, item[2].method))
     targets: list[PriorityTarget] = []
     for rank, (_, signal, route, evidence) in enumerate(candidates, start=1):
-        if signal == "unstable_external_effect_identity":
-            oracle = (
-                "After timeout and retry, assert the provider effect ledger count "
-                "before asserting secondary response statuses."
-            )
-        elif signal == "client_input_in_authoritative_total":
-            oracle = (
-                "Submit a manipulated monetary input and assert returned total and "
-                "provider amount equal the server price multiplied by accepted quantity."
-            )
-        else:
-            oracle = (
-                "Submit zero and a negative quantity, assert both are rejected with "
-                "422, and prove stock, orders, and provider charges are unchanged."
-            )
+        oracle = (
+            "After timeout and retry, assert the provider effect ledger count before asserting secondary response statuses."
+            if signal == "unstable_external_effect_identity"
+            else "Submit a manipulated monetary input and assert returned total and provider amount equal the server price multiplied by accepted quantity."
+        )
         targets.append(
             PriorityTarget(
                 rank=rank,
