@@ -13,3 +13,6 @@ results/**/*.json
 !results/**/.gitkeep
 trajectories/**/*.json
 !trajectories/**/.gitkeep
+
+# Generated benchmark artifacts
+results/
