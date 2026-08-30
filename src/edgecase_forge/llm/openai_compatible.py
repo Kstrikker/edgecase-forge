@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Sequence
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from typing import Any, Callable
 
 import httpx
@@ -17,8 +19,10 @@ from .errors import (
     ProviderError,
     RateLimitError,
     ResponseParseError,
+    ResponseTruncatedError,
     ResponseValidationError,
 )
+from .response_schema import flat_strict_schema
 
 
 class OpenAICompatibleProvider:
@@ -32,7 +36,8 @@ class OpenAICompatibleProvider:
         capabilities: CapabilityProfile,
         timeout_seconds: float = 60.0,
         temperature: float = 0.0,
-        max_output_tokens: int = 4096,
+        max_output_tokens: int = 8192,
+        reasoning_effort: str | None = None,
         max_transport_retries: int = 2,
         retry_backoff_seconds: float = 1.0,
         sleep: Callable[[float], None] = time.sleep,
@@ -52,6 +57,7 @@ class OpenAICompatibleProvider:
         self._temperature = temperature
         self._timeout_seconds = timeout_seconds
         self._max_output_tokens = max_output_tokens
+        self._reasoning_effort = reasoning_effort
         self._max_transport_retries = max_transport_retries
         self._retry_backoff_seconds = retry_backoff_seconds
         self._sleep = sleep
@@ -66,10 +72,12 @@ class OpenAICompatibleProvider:
             "base_url": self._base_url,
             "temperature": self._temperature,
             "max_output_tokens": self._max_output_tokens,
+            "reasoning_effort": self._reasoning_effort,
             "timeout_seconds": self._timeout_seconds,
             "max_transport_retries": self._max_transport_retries,
             "retry_backoff_seconds": self._retry_backoff_seconds,
-            "response_format": "json_object",
+            "response_format": self._capabilities.structured_output,
+            "strict_json_schema": self._capabilities.strict_json_schema,
         }
 
     def generate_json(
@@ -78,11 +86,20 @@ class OpenAICompatibleProvider:
         response_model: type[BaseModel],
     ) -> tuple[BaseModel, LLMResult]:
         self._capabilities.require_json()
-        first_result = self._request(messages)
+        response_format = self._response_format(response_model)
+        first_result = self._request(messages, response_format)
         try:
-            return self._validate(first_result.content, response_model), first_result
+            return self._validate_result(first_result, response_model), first_result
         except (ResponseParseError, ResponseValidationError) as exc:
             repair_error = _sanitized_error(exc)
+            if isinstance(exc, ResponseTruncatedError):
+                repair_instruction = (
+                    "Regenerate the complete object from the beginning. Keep summary under "
+                    "80 words, report only the single highest-confidence defect, and return "
+                    "one compact executable pytest module."
+                )
+            else:
+                repair_instruction = "Correct the response without changing its meaning."
             repair_messages = [
                 *messages,
                 Message(role="assistant", content=first_result.content[:12000]),
@@ -90,12 +107,16 @@ class OpenAICompatibleProvider:
                     role="user",
                     content=(
                         "Your previous output failed validation with this error: "
-                        f"{repair_error}. Correct the JSON and return corrected JSON only."
+                        f"{repair_error}. {repair_instruction} Return exactly one corrected "
+                        "JSON object matching "
+                        "the required schema. Put executable Python directly in the "
+                        "generated_test_code string using standard JSON escaping. Do not "
+                        "use Markdown fences or commentary."
                     ),
                 ),
             ]
             try:
-                repaired = self._request(repair_messages)
+                repaired = self._request(repair_messages, response_format)
             except ProviderError as repair_failure:
                 repair_failure.accounting = _combine_accounting(
                     first_result.accounting,
@@ -103,24 +124,47 @@ class OpenAICompatibleProvider:
                     semantic_attempts=2,
                     repair_used=True,
                 )
+                repair_failure.preserve_model_responses(first_result.content)
                 raise
             combined = _combine_results(first_result, repaired)
             try:
-                parsed = self._validate(repaired.content, response_model)
+                parsed = self._validate_result(repaired, response_model)
             except (ResponseParseError, ResponseValidationError) as final_error:
                 final_error.accounting = combined.accounting
+                final_error.preserve_model_responses(
+                    first_result.content,
+                    repaired.content,
+                )
                 raise
             return parsed, combined
 
-    def _request(self, messages: Sequence[Message]) -> LLMResult:
+    def _response_format(self, response_model: type[BaseModel]) -> dict[str, Any]:
+        if self._capabilities.structured_output == "json_schema":
+            return {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": response_model.__name__.lower(),
+                    "strict": self._capabilities.strict_json_schema,
+                    "schema": flat_strict_schema(response_model),
+                },
+            }
+        return {"type": "json_object"}
+
+    def _request(
+        self,
+        messages: Sequence[Message],
+        response_format: dict[str, Any],
+    ) -> LLMResult:
         started = time.monotonic()
         body = {
             "model": self.model,
             "messages": [{"role": item.role, "content": item.content} for item in messages],
             "temperature": self._temperature,
             "max_tokens": self._max_output_tokens,
-            "response_format": {"type": "json_object"},
+            "response_format": response_format,
         }
+        if self._reasoning_effort is not None:
+            body["reasoning_effort"] = self._reasoning_effort
         response: httpx.Response | None = None
         for attempt in range(self._max_transport_retries + 1):
             try:
@@ -148,18 +192,38 @@ class OpenAICompatibleProvider:
                     f"{self.name} rejected the API key",
                     _request_accounting(started, attempt + 1, response),
                 )
-            if response.status_code == 429 or response.status_code >= 500:
+            if response.status_code == 429:
+                retry_after = _parse_retry_after(response.headers.get("retry-after"))
+                hard_quota = _is_hard_quota(response)
+                can_retry = (
+                    not hard_quota
+                    and retry_after is not None
+                    and 0 <= retry_after <= 60
+                    and attempt < self._max_transport_retries
+                )
+                if can_retry:
+                    self._sleep(retry_after)
+                    continue
+                message = (
+                    f"{self.name} quota exhausted"
+                    if hard_quota
+                    else f"{self.name} rate limit reached"
+                )
+                raise RateLimitError(
+                    message,
+                    retry_after,
+                    _request_accounting(started, attempt + 1, response),
+                )
+            if response.status_code >= 500:
                 retry_after = _parse_retry_after(response.headers.get("retry-after"))
                 if attempt < self._max_transport_retries:
-                    delay = retry_after or self._retry_backoff_seconds * (2**attempt)
+                    delay = (
+                        retry_after
+                        if retry_after is not None and 0 <= retry_after <= 60
+                        else self._retry_backoff_seconds * (2**attempt)
+                    )
                     self._sleep(min(delay, 60.0))
                     continue
-                if response.status_code == 429:
-                    raise RateLimitError(
-                        f"{self.name} rate limit reached",
-                        retry_after,
-                        _request_accounting(started, attempt + 1, response),
-                    )
                 raise ProviderUnavailableError(
                     f"{self.name} is temporarily unavailable",
                     _request_accounting(started, attempt + 1, response),
@@ -185,13 +249,18 @@ class OpenAICompatibleProvider:
                 _request_accounting(started, attempt + 1, response),
             ) from exc
         try:
-            content = payload["choices"][0]["message"]["content"]
+            choice = payload["choices"][0]
+            content = choice["message"]["content"]
         except (KeyError, IndexError, TypeError) as exc:
             raise ResponseParseError(
                 "Provider response did not contain message content",
                 _request_accounting(started, attempt + 1, response),
             ) from exc
         usage_payload = payload.get("usage") or {}
+        finish_reason_value = choice.get("finish_reason")
+        finish_reason = (
+            str(finish_reason_value) if finish_reason_value is not None else None
+        )
         return LLMResult(
             content=content,
             provider=self.name,
@@ -206,12 +275,35 @@ class OpenAICompatibleProvider:
             request_ids=tuple(
                 value for value in (response.headers.get("x-request-id"),) if value
             ),
+            finish_reason=finish_reason,
         )
 
-    @staticmethod
-    def _validate(content: str, response_model: type[BaseModel]) -> BaseModel:
+    def _validate_result(
+        self,
+        result: LLMResult,
+        response_model: type[BaseModel],
+    ) -> BaseModel:
+        if _is_truncated_finish_reason(result.finish_reason):
+            raise ResponseTruncatedError(
+                f"Provider stopped before completing JSON ({result.finish_reason})",
+                result.accounting,
+            )
         try:
-            payload: Any = _extract_first_json_value(content)
+            return self._validate(result.content, response_model)
+        except ResponseParseError as exc:
+            if _looks_like_truncated_json(result.content):
+                raise ResponseTruncatedError(
+                    "Provider stopped before completing JSON",
+                    result.accounting,
+                ) from exc
+            raise
+
+    def _validate(self, content: str, response_model: type[BaseModel]) -> BaseModel:
+        try:
+            if self._capabilities.structured_output == "json_schema":
+                payload: Any = json.loads(content)
+            else:
+                payload = _extract_first_json_value(content)
         except json.JSONDecodeError as exc:
             raise ResponseParseError(f"Invalid JSON at character {exc.pos}") from exc
         try:
@@ -266,6 +358,8 @@ def _combine_results(first: LLMResult, repaired: LLMResult) -> LLMResult:
         transport_attempts=accounting.transport_attempts,
         repair_used=accounting.repair_used,
         request_ids=accounting.request_ids,
+        finish_reason=repaired.finish_reason,
+        finish_reasons=accounting.finish_reasons,
     )
 
 
@@ -286,6 +380,7 @@ def _combine_accounting(
         transport_attempts=first.transport_attempts + second.transport_attempts,
         repair_used=repair_used,
         request_ids=first.request_ids + second.request_ids,
+        finish_reasons=first.finish_reasons + second.finish_reasons,
     )
 
 
@@ -307,4 +402,36 @@ def _parse_retry_after(value: str | None) -> float | None:
     try:
         return float(value)
     except ValueError:
-        return None
+        try:
+            target = parsedate_to_datetime(value)
+        except (TypeError, ValueError):
+            return None
+        if target.tzinfo is None:
+            target = target.replace(tzinfo=timezone.utc)
+        return max(0.0, (target - datetime.now(timezone.utc)).total_seconds())
+
+
+def _is_hard_quota(response: httpx.Response) -> bool:
+    message = response.text.lower()
+    markers = (
+        "per day",
+        "per_day",
+        "perday",
+        "daily quota",
+        "requests per day",
+    )
+    return any(marker in message for marker in markers)
+
+
+def _is_truncated_finish_reason(value: str | None) -> bool:
+    if value is None:
+        return False
+    normalized = value.strip().lower().replace("-", "_")
+    return normalized in {"length", "max_tokens", "max_token"}
+
+
+def _looks_like_truncated_json(content: str) -> bool:
+    value = content.rstrip()
+    if not value.startswith("{"):
+        return False
+    return value.endswith(("[", "{", ",", ":"))

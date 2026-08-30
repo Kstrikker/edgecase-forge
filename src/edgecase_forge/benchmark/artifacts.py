@@ -230,8 +230,19 @@ def _validate_evaluation_artifacts(
         isinstance(value, str) for value in item["request_ids"]
     ):
         raise ValueError(f"Progress JSONL line {line_number} has invalid request_ids")
+    if not isinstance(item.get("finish_reasons"), list) or not all(
+        isinstance(value, str) for value in item["finish_reasons"]
+    ):
+        raise ValueError(f"Progress JSONL line {line_number} has invalid finish_reasons")
 
     if status == "model_output_error":
+        for field in ("model_response_sha256", "model_response_excerpts"):
+            if not isinstance(item.get(field), list) or not all(
+                isinstance(value, str) for value in item[field]
+            ):
+                raise ValueError(
+                    f"Progress JSONL line {line_number} has invalid {field}"
+                )
         if (
             item.get("run_directory") is not None
             or item.get("differential_evidence") is not None

@@ -6,14 +6,20 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class Finding(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    title: str = Field(min_length=1)
+    title: str = Field(min_length=1, description="Short, specific defect title")
     severity: str = Field(description="One of low, medium, high, critical")
     endpoint: str = Field(description="HTTP method and route, or unknown")
-    claim: str = Field(min_length=1)
-    evidence: list[str] = Field(default_factory=list)
+    claim: str = Field(min_length=1, description="Testable statement of the defect")
+    evidence: list[str] = Field(
+        default_factory=list,
+        description="Concrete source observations supporting the claim",
+    )
     test_file: str = Field(description="Relative generated pytest path")
     test_name: str = Field(description="Generated pytest function name")
-    reproduced: bool = False
+    reproduced: bool = Field(
+        default=False,
+        description="Whether the generated test was executed by the model",
+    )
 
     @field_validator("evidence", mode="before")
     @classmethod
@@ -26,8 +32,10 @@ class Finding(BaseModel):
 class BaselineAnalysis(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    summary: str
-    findings: list[Finding]
+    summary: str = Field(description="Concise summary of the repository analysis")
+    findings: list[Finding] = Field(
+        description="Defects supported by concrete code evidence; empty if none"
+    )
     generated_test_code: str = Field(
         description="Complete executable pytest module; empty only when no defect is found"
     )

@@ -26,6 +26,7 @@ class AttemptAccounting:
     transport_attempts: int = 0
     repair_used: bool = False
     request_ids: tuple[str, ...] = ()
+    finish_reasons: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,11 +41,16 @@ class LLMResult:
     transport_attempts: int = 1
     repair_used: bool = False
     request_ids: tuple[str, ...] = ()
+    finish_reason: str | None = None
+    finish_reasons: tuple[str, ...] = ()
 
     @property
     def accounting(self) -> AttemptAccounting:
         request_ids = self.request_ids or (
             (self.request_id,) if self.request_id is not None else ()
+        )
+        finish_reasons = self.finish_reasons or (
+            (self.finish_reason,) if self.finish_reason is not None else ()
         )
         return AttemptAccounting(
             usage=self.usage,
@@ -53,6 +59,7 @@ class LLMResult:
             transport_attempts=self.transport_attempts,
             repair_used=self.repair_used,
             request_ids=request_ids,
+            finish_reasons=finish_reasons,
         )
 
 

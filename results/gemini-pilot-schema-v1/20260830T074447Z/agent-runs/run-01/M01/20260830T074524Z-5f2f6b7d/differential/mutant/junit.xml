@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.618" timestamp="2026-08-30T07:46:00.707058+00:00" hostname="e59a072e11d6"><testcase classname="test_generated" name="test_concurrent_orders_oversell" time="0.077"><failure message="AssertionError: Expected exactly 1 successful order, got 2&#10;assert 2 == 1">def test_concurrent_orders_oversell():
+        reset_state()
+        client = TestClient(app)
+    
+        def place_order(user, key):
+            try:
+                response = client.post(
+                    "/orders",
+                    headers={
+                        "Authorization": f"Bearer {user}",
+                        "Idempotency-Key": key
+                    },
+                    json={"product_id": 1, "quantity": 5}
+                )
+                return response
+            except Exception as e:
+                return e
+    
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            futures = [
+                executor.submit(place_order, "buyer-a", "key-1"),
+                executor.submit(place_order, "buyer-b", "key-2")
+            ]
+            results = [f.result() for f in futures]
+    
+        success_count = sum(1 for r in results if hasattr(r, "status_code") and r.status_code == 201)
+        conflict_count = sum(1 for r in results if hasattr(r, "status_code") and r.status_code == 409)
+    
+&gt;       assert success_count == 1, f"Expected exactly 1 successful order, got {success_count}"
+E       AssertionError: Expected exactly 1 successful order, got 2
+E       assert 2 == 1
+
+test_generated.py:33: AssertionError</failure></testcase></testsuite></testsuites>

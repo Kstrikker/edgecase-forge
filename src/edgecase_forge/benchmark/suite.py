@@ -330,6 +330,7 @@ def _run_case(
             "transport_attempts": report["transport_attempts"],
             "repair_used": report["repair_used"],
             "request_ids": report["request_ids"],
+            "finish_reasons": report["finish_reasons"],
             "runtime_seconds": report["runtime_seconds"],
             "execution_runtime_seconds": round(
                 clean_result.duration_seconds
@@ -396,6 +397,12 @@ def _model_output_error(
         "evaluator_infrastructure_error_count": 0,
         "error_type": type(error).__name__,
         "error": str(error)[:2000],
+        "model_response_sha256": list(
+            getattr(error, "model_response_sha256", ())
+        ),
+        "model_response_excerpts": list(
+            getattr(error, "model_response_excerpts", ())
+        ),
         "test_generated": False,
         "passes_clean": False,
         "fails_mutant": False,
@@ -419,6 +426,9 @@ def _model_output_error(
         ),
         "repair_used": accounting.repair_used if accounting is not None else False,
         "request_ids": list(accounting.request_ids) if accounting is not None else [],
+        "finish_reasons": (
+            list(accounting.finish_reasons) if accounting is not None else []
+        ),
         "runtime_seconds": (
             round(accounting.latency_seconds, 4) if accounting is not None else 0.0
         ),
@@ -468,6 +478,7 @@ def _no_test_evaluation(
         "transport_attempts": report["transport_attempts"],
         "repair_used": report["repair_used"],
         "request_ids": report["request_ids"],
+        "finish_reasons": report["finish_reasons"],
         "runtime_seconds": report["runtime_seconds"],
         "execution_runtime_seconds": 0.0,
     }

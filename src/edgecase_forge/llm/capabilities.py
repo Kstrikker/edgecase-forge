@@ -34,6 +34,17 @@ PORTABLE_OPENAI_COMPATIBLE = CapabilityProfile(
 )
 
 
+STRICT_OPENAI_COMPATIBLE = CapabilityProfile(
+    structured_output="json_schema",
+    strict_json_schema=True,
+    tool_calling=True,
+    parallel_tool_calls=False,
+    streaming=True,
+    supports_tool_choice=True,
+    schema_unsupported_keywords=frozenset({"$defs", "$ref", "anyOf", "oneOf"}),
+)
+
+
 def validate_tool_schema(tool: dict) -> None:
     function = tool.get("function")
     if not isinstance(function, dict):
@@ -63,4 +74,3 @@ def _validate_property_descriptions(schema: dict, path: str) -> None:
             raise ToolSchemaError(f"{child_path} type is required")
         if child.get("type") == "object":
             _validate_property_descriptions(child, child_path)
-

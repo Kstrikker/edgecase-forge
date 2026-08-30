@@ -77,7 +77,7 @@ Only one integrator changes the main branch. Suggestions from other models enter
 
 - Provider-neutral Gemini/Grok/OpenAI-compatible boundary implemented.
 - Portable JSON-object validation and exact-error repair implemented.
-- Frozen `baseline-v1.0` prompt, repository collector, report and trajectory writer implemented.
+- Frozen `baseline-v1.2` prompt, repository collector, report and trajectory writer implemented.
 - External mutation-scoring contract implemented.
 - Clean/mutant stock-race smoke fixtures reproduce the expected difference.
 - Automated verification: 11 tests passing.

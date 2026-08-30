@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+
 from .base import AttemptAccounting
 
 
@@ -11,6 +13,14 @@ class ProviderError(RuntimeError):
     ) -> None:
         super().__init__(message)
         self.accounting = accounting or AttemptAccounting()
+        self.model_response_sha256: tuple[str, ...] = ()
+        self.model_response_excerpts: tuple[str, ...] = ()
+
+    def preserve_model_responses(self, *responses: str) -> None:
+        self.model_response_sha256 = tuple(
+            hashlib.sha256(item.encode("utf-8")).hexdigest() for item in responses
+        )
+        self.model_response_excerpts = tuple(item[:4000] for item in responses)
 
 
 class AuthenticationError(ProviderError):
@@ -45,6 +55,10 @@ class ToolSchemaError(ProviderError):
 
 
 class ResponseParseError(ProviderError):
+    pass
+
+
+class ResponseTruncatedError(ResponseParseError):
     pass
 
 

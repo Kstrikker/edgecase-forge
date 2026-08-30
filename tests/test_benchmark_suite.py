@@ -83,7 +83,7 @@ def test_suite_records_model_output_errors_and_continues(tmp_path: Path) -> None
         model = "broken-model"
 
         def generate_json(self, messages, response_model):
-            raise ResponseValidationError(
+            error = ResponseValidationError(
                 "evidence must be a list",
                 AttemptAccounting(
                     usage=Usage(input_tokens=20, output_tokens=40),
@@ -92,8 +92,11 @@ def test_suite_records_model_output_errors_and_continues(tmp_path: Path) -> None
                     transport_attempts=2,
                     repair_used=True,
                     request_ids=("first", "repair"),
+                    finish_reasons=("length", "stop"),
                 ),
             )
+            error.preserve_model_responses("first-invalid", "repair-invalid")
+            raise error
 
     suite_dir = run_flashcart_suite(provider=BrokenProvider(), output_root=tmp_path)
     summary = json.loads((suite_dir / "suite-summary.json").read_text(encoding="utf-8"))
@@ -105,6 +108,12 @@ def test_suite_records_model_output_errors_and_continues(tmp_path: Path) -> None
     assert summary["semantic_attempts"] == 22
     assert summary["transport_attempts"] == 22
     assert summary["repair_used_evaluations"] == 11
+    assert summary["cases"][0]["model_response_excerpts"] == [
+        "first-invalid",
+        "repair-invalid",
+    ]
+    assert len(summary["cases"][0]["model_response_sha256"]) == 2
+    assert summary["cases"][0]["finish_reasons"] == ["length", "stop"]
     assert summary["candidate_mutation_score"] == 0.0
     assert "model_output_error" not in summary["official_score_blockers"]
     assert summary["evaluator_infrastructure_errors"] == 0

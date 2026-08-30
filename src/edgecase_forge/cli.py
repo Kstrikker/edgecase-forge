@@ -108,7 +108,7 @@ def benchmark_run(
         help="Docker for official runs; local is for trusted rehearsal only.",
     ),
 ) -> None:
-    """Run baseline-v1.0 across the frozen FlashCart suite."""
+    """Run baseline-v1.2 across the frozen FlashCart suite."""
     suite_dir = run_flashcart_suite(
         provider=build_provider(provider, model),
         output_root=output,

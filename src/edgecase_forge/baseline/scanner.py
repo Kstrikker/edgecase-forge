@@ -78,6 +78,7 @@ class BaselineScanner:
             "transport_attempts": llm_result.transport_attempts,
             "repair_used": llm_result.repair_used,
             "request_ids": list(llm_result.accounting.request_ids),
+            "finish_reasons": list(llm_result.accounting.finish_reasons),
             "execution": execution_payload(execution),
         }
         metadata = {
@@ -108,6 +109,7 @@ class BaselineScanner:
                 "semantic_attempts": llm_result.semantic_attempts,
                 "transport_attempts": llm_result.transport_attempts,
                 "repair_used": llm_result.repair_used,
+                "finish_reasons": list(llm_result.accounting.finish_reasons),
                 "validated_output": analysis.model_dump(),
             },
             {"event": "pytest_execution", **execution_payload(execution)},

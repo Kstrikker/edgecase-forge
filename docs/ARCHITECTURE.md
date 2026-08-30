@@ -22,7 +22,7 @@ The benchmark evaluator sits outside this runtime. It gives the agent an opaque 
 
 ## Provider boundary
 
-The core depends only on `LLMProvider.generate_json(messages, response_model)`. Provider profiles configure base URL, key environment variable and locked model. Baseline requests portable JSON-object output and validates locally instead of sending a complex provider-specific JSON Schema.
+The core depends only on `LLMProvider.generate_json(messages, response_model)`. Provider profiles configure base URL, key environment variable, locked model and optional reasoning effort. Schema-capable providers receive a normalized, flat strict JSON Schema without references or unions; every response is still parsed by the standard JSON decoder and validated locally with Pydantic. Finish reasons are retained so length-limited output can receive one concise repair and remain distinguishable from malformed JSON.
 
 Provider capabilities are explicit. Unsupported strict schema or tool behavior must fail locally rather than silently degrading or producing provider-specific baseline behavior.
 

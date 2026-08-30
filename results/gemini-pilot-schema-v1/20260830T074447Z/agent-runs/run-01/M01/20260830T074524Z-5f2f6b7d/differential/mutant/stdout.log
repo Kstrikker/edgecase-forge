@@ -1,0 +1,47 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_______________________ test_concurrent_orders_oversell ________________________
+
+    def test_concurrent_orders_oversell():
+        reset_state()
+        client = TestClient(app)
+    
+        def place_order(user, key):
+            try:
+                response = client.post(
+                    "/orders",
+                    headers={
+                        "Authorization": f"Bearer {user}",
+                        "Idempotency-Key": key
+                    },
+                    json={"product_id": 1, "quantity": 5}
+                )
+                return response
+            except Exception as e:
+                return e
+    
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            futures = [
+                executor.submit(place_order, "buyer-a", "key-1"),
+                executor.submit(place_order, "buyer-b", "key-2")
+            ]
+            results = [f.result() for f in futures]
+    
+        success_count = sum(1 for r in results if hasattr(r, "status_code") and r.status_code == 201)
+        conflict_count = sum(1 for r in results if hasattr(r, "status_code") and r.status_code == 409)
+    
+>       assert success_count == 1, f"Expected exactly 1 successful order, got {success_count}"
+E       AssertionError: Expected exactly 1 successful order, got 2
+E       assert 2 == 1
+
+test_generated.py:33: AssertionError
+=============================== warnings summary ===============================
+../../usr/local/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /usr/local/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+-------------- generated xml file: /workspace/artifacts/junit.xml --------------
+=========================== short test summary info ============================
+FAILED test_generated.py::test_concurrent_orders_oversell - AssertionError: E...
+1 failed, 1 warning in 0.62s
