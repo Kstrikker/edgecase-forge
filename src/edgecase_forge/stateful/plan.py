@@ -59,6 +59,30 @@ def build_attack_plan(repository_map: RepositoryMap) -> AttackPlan:
             AttackStep(3, "Assert returned total equals server price multiplied by quantity", "Execute the primary integrity oracle"),
             AttackStep(4, "Assert the provider amount matches the same total", "Verify downstream consistency"),
         )
+    elif target.signal == "missing_numeric_request_boundary":
+        steps = (
+            AttackStep(
+                1,
+                "Snapshot stock, orders, and provider charges",
+                "Establish an isolated state baseline",
+            ),
+            AttackStep(2, "Submit a request with quantity zero", "Exercise the lower boundary"),
+            AttackStep(
+                3,
+                "Submit a request with a negative quantity",
+                "Exercise the invalid negative partition",
+            ),
+            AttackStep(
+                4,
+                "Assert both requests are rejected with HTTP 422",
+                "Prove boundary enforcement",
+            ),
+            AttackStep(
+                5,
+                "Assert stock is unchanged and no orders or charges exist",
+                "Prove invalid input has no side effects",
+            ),
+        )
     else:
         steps = (
             AttackStep(1, "Establish isolated state", "Create a deterministic starting point"),

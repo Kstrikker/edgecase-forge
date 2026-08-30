@@ -6,7 +6,7 @@
 CLI
  ├─ BaselineScanner (frozen control)
  ├─ ContractScanner (Iteration 1)
- └─ StatefulScanner (Iteration 2)
+ └─ StatefulScanner (Iterations 2–3)
      ├─ Repository collector (read-only, secret-aware)
      ├─ Deterministic AST contract mapper
      │   ├─ Routes and reachable handlers
@@ -59,7 +59,7 @@ results/baseline/<run-id>/
 
 Contract runs additionally write `repository-map.json`; `report.json` contains the model-derived invariants and the map hash. The mapper never imports or executes repository code. Route source files are prioritized within the same bounded context budget used by the baseline collector. Deterministic high-risk flows are ranked before model analysis, and every priority includes the concrete business oracle that generated code must execute before secondary HTTP assertions.
 
-Stateful runs add `attack-plan.json`. Plan-specific Pydantic validation inspects the generated pytest AST before it is accepted. A retry-side-effect test must issue two requests, contain a provider-ledger assertion, and execute that assertion before checking the retry response status. Invalid ordering enters the existing one-repair provider loop with the concrete parser error.
+Stateful runs add `attack-plan.json`. Plan-specific Pydantic validation inspects the generated pytest AST before it is accepted. A retry-side-effect test must issue two requests, contain a provider-ledger assertion, and execute that assertion before checking the retry response status. A numeric-boundary test must exercise zero and a negative value, assert HTTP 422 for both responses, and prove unchanged stock plus empty order and charge ledgers. Invalid evidence enters the existing one-repair provider loop with the concrete parser error.
 
 Benchmark case runs also write `differential/clean` and `differential/mutant` evidence directories containing `execution.json`, `junit.xml`, `stdout.log` and `stderr.log`, plus one atomic `differential.json` classification manifest.
 
