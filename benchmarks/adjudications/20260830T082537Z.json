@@ -1,0 +1,81 @@
+{
+  "schema_version": "adjudication-decisions-v1",
+  "suite_id": "20260830T082537Z",
+  "suite_fingerprint_sha256": "3e5813259403c82445bc926b9691be38fa5b8d90e23d6a4a822941d981e24cca",
+  "reviewer": "independent-manual-evidence-review",
+  "review_policy": "Confirm only when the generated test directly demonstrates the frozen expected invariant on clean-versus-mutant evidence.",
+  "decisions": [
+    {
+      "repetition": 1,
+      "case_id": "M01",
+      "test_sha256": "b849441aa84b3fc6d6c438a265e5b5aa0b733042bf1cc3c4d4c05e6f189f620c",
+      "differential_sha256": "960cf83f2d9bae104d680186a366d1f98884f990a512fc941901fb1bb8555146",
+      "decision": "confirmed",
+      "reason": "The concurrent-order test directly proves that successful quantity cannot exceed initial stock and that stock remains nonnegative."
+    },
+    {
+      "repetition": 1,
+      "case_id": "M02",
+      "test_sha256": "5ebaa218d4fede4dc5f2d9ebd13f521b2d3d8ff41aa74794bc408e5869fc9310",
+      "differential_sha256": "90c5e13fc07a31ee464b98088fc6ee56db09448994e80cc4761703896f0e15d7",
+      "decision": "confirmed",
+      "reason": "The concurrent duplicate-request test directly proves one idempotency key can create multiple orders and inventory effects."
+    },
+    {
+      "repetition": 1,
+      "case_id": "M03",
+      "test_sha256": "12ca64fd8352366e8b4dd9156843a3fa5e1cf7fab667977355ac0f31d15a4385",
+      "differential_sha256": "8089efa52fe58a4cb11dff29817ecf33714747763e9ddaf89f5017e7f95db14d",
+      "decision": "confirmed",
+      "reason": "The cross-buyer read test directly proves that a buyer can retrieve another buyer's order."
+    },
+    {
+      "repetition": 1,
+      "case_id": "M04",
+      "test_sha256": "652e4b77e071776f872f8bedf9db8ada3eb7818243c0ba8db98569ce5864f979",
+      "differential_sha256": "24869f6a46694794131ec190391ac7b73716ff5477ec69273790c4edf8181b85",
+      "decision": "confirmed",
+      "reason": "The invalid-HMAC test directly proves that an unauthenticated webhook is accepted instead of being rejected."
+    },
+    {
+      "repetition": 1,
+      "case_id": "M05",
+      "test_sha256": "eb3c0c4b32295f82dc751473bbe1c1d6b38ab7f6e88598faca48f32cc5a6f914",
+      "differential_sha256": "5923d3e7560054ea739b1ec397c60bb9c09f5e0c46fe58ba94b07837e209b3cf",
+      "decision": "confirmed",
+      "reason": "The identical-event replay test directly proves that a processed webhook event can be applied more than once."
+    },
+    {
+      "repetition": 1,
+      "case_id": "M06",
+      "test_sha256": "e86c62f420dc911fd136da923d0c83919045bcc68252ae861c371c98d80efa52",
+      "differential_sha256": "683bc95405a5e76b2e99547c686a6fd40f1f6a36865a43f0b138955023c648d0",
+      "decision": "confirmed",
+      "reason": "The negative-quantity test directly proves invalid quantity acceptance and its inventory side effect."
+    },
+    {
+      "repetition": 1,
+      "case_id": "M07",
+      "test_sha256": "ddef7de074681176ad86ffcf083e2a5eb90e5e5e110f07e6b4d24303d13a6360",
+      "differential_sha256": "12d0498d67307959346e1caf888d2eb45cf33604b69f8510c4bff402895932b1",
+      "decision": "confirmed",
+      "reason": "The declined-payment test directly proves that rejected checkout can permanently consume inventory."
+    },
+    {
+      "repetition": 1,
+      "case_id": "M08",
+      "test_sha256": "f9611d26fcfc62357bfda0d2287a6e319e13f1c723abf610c7d924a8b28a7aff",
+      "differential_sha256": "a0acd6f5e3048123d7fde2755b9ce37f51b03308a5f4256d6d5ca9f6358573b5",
+      "decision": "rejected",
+      "reason": "The test checks timeout and retry responses but never observes provider charge count, so it does not prove the at-most-one-charge invariant."
+    },
+    {
+      "repetition": 1,
+      "case_id": "M09",
+      "test_sha256": "433a2c33914a36164cf32a1fa2f04956e3cf283eaf2ce1d2b3600f45990ab82b",
+      "differential_sha256": "f0223fc2bda6257ecdc43179c0650d20c5b818db6b0384fa7047acf99f0c55eb",
+      "decision": "confirmed",
+      "reason": "The duplicate-cancellation test directly proves repeated inventory restoration above the initial stock."
+    }
+  ]
+}

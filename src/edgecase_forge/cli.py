@@ -9,7 +9,7 @@ import typer
 from edgecase_forge.baseline import BaselineScanner
 from edgecase_forge.baseline.executor import execution_payload
 from edgecase_forge.baseline.restricted import ensure_runner_image, run_restricted_pytest
-from edgecase_forge.benchmark import run_flashcart_suite
+from edgecase_forge.benchmark import adjudicate_suite, run_flashcart_suite
 from benchmarks.flashcart import export_agent_repo
 from edgecase_forge.llm.registry import PROVIDERS, build_provider
 
@@ -119,6 +119,37 @@ def benchmark_run(
         execution_backend=execution_backend,
     )
     typer.echo(f"Benchmark suite saved: {suite_dir}")
+
+
+@app.command("benchmark-adjudicate")
+def benchmark_adjudicate(
+    suite: Path = typer.Option(
+        ..., exists=True, file_okay=False, resolve_path=True,
+        help="Completed frozen benchmark suite directory.",
+    ),
+    decisions: Path = typer.Option(
+        ..., exists=True, dir_okay=False, resolve_path=True,
+        help="Reviewed adjudication-decisions-v1 JSON file.",
+    ),
+) -> None:
+    """Verify candidate evidence and publish an immutable confirmed-score overlay."""
+    adjudication_path, summary_path = adjudicate_suite(
+        suite_dir=suite, decisions_path=decisions
+    )
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    typer.echo(
+        json.dumps(
+            {
+                "adjudication": str(adjudication_path),
+                "summary": str(summary_path),
+                "confirmed_kills": summary["confirmed_kills"],
+                "confirmed_mutation_score": summary["confirmed_mutation_score"],
+                "official_score_eligible": summary["official_score_eligible"],
+                "official_score_blockers": summary["official_score_blockers"],
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":
