@@ -201,7 +201,7 @@ def _build_adjudicated_summary(
     ]
     confirmed = sum(int(item["confirmed_kill"]) for item in case_decisions)
     rejected = len(case_decisions) - confirmed
-    return {
+    summary = {
         "schema_version": SUMMARY_SCHEMA_VERSION,
         "suite_id": config["suite_id"],
         "suite_fingerprint_sha256": frozen["suite_fingerprint_sha256"],
@@ -233,6 +233,9 @@ def _build_adjudicated_summary(
         "decisions": case_decisions,
         "note": "Confirmed score is an immutable overlay; raw suite evidence is unchanged.",
     }
+    if "agent" in raw_summary:
+        summary["agent"] = raw_summary["agent"]
+    return summary
 
 
 def _read_decisions(path: Path) -> AdjudicationDecisions:

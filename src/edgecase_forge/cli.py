@@ -10,6 +10,7 @@ from edgecase_forge.baseline import BaselineScanner
 from edgecase_forge.baseline.executor import execution_payload
 from edgecase_forge.baseline.restricted import ensure_runner_image, run_restricted_pytest
 from edgecase_forge.benchmark import adjudicate_suite, run_flashcart_suite
+from edgecase_forge.contract import ContractScanner
 from benchmarks.flashcart import export_agent_repo
 from edgecase_forge.llm.registry import PROVIDERS, build_provider
 
@@ -83,6 +84,29 @@ def baseline_scan(
     typer.echo(f"Baseline run saved: {run_dir}")
 
 
+@app.command("contract-scan")
+def contract_scan(
+    repo: Path = typer.Option(..., exists=True, file_okay=False, resolve_path=True),
+    provider: str = typer.Option("mock"),
+    model: str | None = typer.Option(None),
+    output: Path = typer.Option(Path("results/contract")),
+    case_id: str = typer.Option("local-case"),
+    execute: bool = typer.Option(
+        False,
+        help="Execute generated code. Use only with trusted repositories.",
+    ),
+) -> None:
+    """Map API invariants and generate linked adversarial tests."""
+    scanner = ContractScanner(build_provider(provider, model))
+    run_dir = scanner.scan(
+        repo=repo,
+        output_root=output,
+        case_id=case_id,
+        execute=execute,
+    )
+    typer.echo(f"Contract run saved: {run_dir}")
+
+
 @app.command("benchmark-run")
 def benchmark_run(
     provider: str = typer.Option("mock"),
@@ -107,8 +131,13 @@ def benchmark_run(
         "--execution-backend",
         help="Docker for official runs; local is for trusted rehearsal only.",
     ),
+    agent: str = typer.Option(
+        "baseline",
+        "--agent",
+        help="baseline for the frozen control; contract for Iteration 1.",
+    ),
 ) -> None:
-    """Run baseline-v1.2 across the frozen FlashCart suite."""
+    """Run a selected agent across the frozen FlashCart suite."""
     suite_dir = run_flashcart_suite(
         provider=build_provider(provider, model),
         output_root=output,
@@ -117,6 +146,7 @@ def benchmark_run(
         resume_dir=resume,
         case_ids=case,
         execution_backend=execution_backend,
+        agent=agent,
     )
     typer.echo(f"Benchmark suite saved: {suite_dir}")
 

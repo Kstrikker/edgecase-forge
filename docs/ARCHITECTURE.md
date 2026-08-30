@@ -1,11 +1,17 @@
-# Baseline architecture
+# EdgeCase Forge architecture
 
 ## Runtime connection
 
 ```text
 CLI
- └─ BaselineScanner
+ ├─ BaselineScanner (frozen control)
+ └─ ContractScanner (Iteration 1)
      ├─ Repository collector (read-only, secret-aware)
+     ├─ Deterministic AST contract mapper
+     │   ├─ Routes and reachable handlers
+     │   ├─ Guards and resource ownership
+     │   ├─ Shared-state reads/writes
+     │   └─ External effects and retry identities
      ├─ Frozen baseline prompt
      ├─ LLMProvider protocol
      │   ├─ MockProvider
@@ -46,6 +52,8 @@ results/baseline/<run-id>/
 ├── trajectory.jsonl
 └── execution.log
 ```
+
+Contract runs additionally write `repository-map.json`; `report.json` contains the model-derived invariants and the map hash. The mapper never imports or executes repository code. Route source files are prioritized within the same bounded context budget used by the baseline collector. Deterministic high-risk flows are ranked before model analysis, and every priority includes the concrete business oracle that generated code must execute before secondary HTTP assertions.
 
 Benchmark case runs also write `differential/clean` and `differential/mutant` evidence directories containing `execution.json`, `junit.xml`, `stdout.log` and `stderr.log`, plus one atomic `differential.json` classification manifest.
 

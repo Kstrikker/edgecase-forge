@@ -29,6 +29,7 @@ def frozen_config(
     source_hashes: dict[str, str],
     manifest_sha256: str,
     execution_backend: str = "local",
+    agent_config: dict[str, str],
 ) -> dict:
     artifact_hashes = _frozen_artifact_hashes()
     runtime_versions = _runtime_versions()
@@ -40,6 +41,7 @@ def frozen_config(
         "artifact_hashes": artifact_hashes,
         "runtime_versions": runtime_versions,
         "provider": provider_config,
+        "agent": agent_config,
         "execution_backend": execution_backend,
         "manifest_sha256": manifest_sha256,
         "git_state": git_state,
@@ -47,6 +49,7 @@ def frozen_config(
     return {
         "benchmark_version": BENCHMARK_VERSION,
         "provider": provider_config,
+        "agent": agent_config,
         "execution_backend": execution_backend,
         "repetitions": repetitions,
         "selected_cases": list(selected_cases),

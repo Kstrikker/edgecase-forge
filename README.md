@@ -2,9 +2,9 @@
 
 EdgeCase Forge is an evidence-first AI QA agent for compatible FastAPI repositories. It inspects a repository, proposes adversarial tests, executes generated pytest tests against trusted benchmark fixtures, and records reproducible evidence.
 
-## Current milestone: baseline
+## Current milestone: Iteration 1 contract mapper
 
-The current implementation is intentionally simple: one frozen prompt, one model, ordinary repository context, local Pydantic validation, and one optional pytest execution step. It excludes the specialized contract mapper, concurrency attacker, replay tools, database inspector, and independent verifier planned for later iterations.
+The frozen baseline remains available for comparison. Iteration 1 adds a deterministic, read-only Python AST mapper that discovers FastAPI routes, reachable handlers, guards, shared-state transitions, external effects and risk signals. One model call receives that map plus prioritized source and must link every finding and generated test to an explicit invariant.
 
 ## Quick start
 
@@ -14,6 +14,7 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 python -m pip install -e ".[dev,benchmark]"
 edgecase-forge providers
 edgecase-forge baseline-scan --repo ./path/to/trusted/repository --provider mock
+edgecase-forge contract-scan --repo ./path/to/trusted/repository --provider mock
 edgecase-forge docker-smoke
 edgecase-forge benchmark-run --provider mock
 pytest
@@ -26,6 +27,15 @@ Generated tests are code. Generic baseline execution is disabled unless `--execu
 Project decisions and progress live in [docs/WORKFLOW.md](docs/WORKFLOW.md).
 
 The frozen FlashCart benchmark contains one clean control and ten isolated mutants. `benchmark-run` exports one neutral case at a time, runs the frozen baseline, and records node-level clean-versus-mutant evidence. Candidate kills require independent invariant adjudication before they count toward the final mutation score.
+
+Select the agent explicitly for measured comparisons:
+
+```bash
+edgecase-forge benchmark-run --agent baseline --provider mock --case C00
+edgecase-forge benchmark-run --agent contract --provider mock --case C00
+```
+
+Contract runs add `repository-map.json` and an `invariants` section to each report. High-risk flows such as volatile external-effect identities and client-controlled monetary totals become ranked priority targets with required executable oracles. Agent name, version and prompt hash are included in the frozen suite fingerprint, so a baseline suite cannot be resumed as an Iteration 1 suite.
 
 For a low-cost rehearsal, select individual cases by repeating `--case`, for example `--case C00 --case M01`. A subset run is always marked ineligible for an official score.
 

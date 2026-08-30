@@ -11,8 +11,8 @@ EdgeCase Forge improves bug discovery over a generic coding agent by combining b
 | Stage | Status | Exit criterion |
 |---|---|---|
 | Benchmark contract | Complete | FlashCart v1.1.0: clean control, 10 opaque mutants, frozen hashes and a 100-cell isolation matrix |
-| Baseline | In progress | Node-level evaluator and frozen fingerprints complete; restricted execution and fresh pilot pending |
-| Iteration 1 | Blocked by baseline | Contract Mapper produces explicit endpoint invariants |
+| Baseline | Complete | Official run adjudicated: 8/10 confirmed kills, 80% mutation score, zero blockers |
+| Iteration 1 | Pilot refinement | First pilot exposed oracle-order and priority-selection gaps; contract-v1.1 hardened offline |
 | Iteration 2 | Blocked by Iteration 1 | Stateful attackers reproduce concurrency, replay and retry failures |
 | Iteration 3 | Blocked by Iteration 2 | Independent executable verifier reduces false positives |
 | Final | Blocked by evidence | Dashboard, comparison report, trajectories, docs and video complete |
@@ -114,3 +114,31 @@ Only one integrator changes the main branch. Suggestions from other models enter
 - Semantic repair accounting includes both model calls and every transport attempt.
 - Resume requires the complete frozen benchmark fingerprint, not only provider and model.
 - Automated verification: 161 tests passing.
+
+### Official baseline — complete
+
+- One full 11-case Gemini run completed with no model-output or infrastructure errors.
+- Nine candidate kills were independently reviewed against frozen invariants.
+- Eight were confirmed; M08 was rejected because its test did not observe provider charge count.
+- Confirmed mutation score: 80%; official score blockers: none.
+- The immutable adjudication overlay preserves all raw evidence hashes.
+
+### Iteration 1 contract mapper — ready for pilot
+
+- A deterministic AST mapper discovers FastAPI routes and reachable local handlers without executing repository code.
+- The map surfaces guards, state reads/writes, external effects, retry identity and high-value risk signals.
+- Route-bearing files are prioritized within a fixed repository-context budget.
+- Every generated finding must reference an explicit invariant and an actual generated pytest function.
+- Side-effect tests are instructed to inspect ledgers, counts, amounts or final state rather than infer impact from HTTP status.
+- Agent name, version and prompt hash are frozen into every suite fingerprint.
+- First measurement target: M08 and M10 only; proceed to all 11 cases only if the pilot evidence is valid.
+
+### Iteration 1 first pilot — reviewed
+
+- C00 produced no finding and its generated behavioral test passed.
+- M08 became a candidate, but strict review rejected it because the mutant failed on a retry-status assertion before reaching the charge-count oracle.
+- M10's deterministic map correctly emitted `client_input_in_authoritative_total`, but the model selected an unrelated pending-cancellation behavior that survived both implementations.
+- No invalid tests, model-output errors or evaluator infrastructure errors occurred.
+- Contract v1.1 now converts volatile effect identities and client-controlled monetary totals into ranked mandatory targets.
+- Required business-oracle assertions must execute before secondary response-status assertions.
+- The first pilot remains preserved and is not retroactively rescored.

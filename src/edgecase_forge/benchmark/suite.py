@@ -12,6 +12,7 @@ from pathlib import Path
 
 from benchmarks.flashcart import export_agent_repo
 from edgecase_forge.baseline import BaselineScanner
+from edgecase_forge.contract import ContractScanner
 from edgecase_forge.baseline.executor import ExecutionResult, run_generated_pytest
 from edgecase_forge.baseline.restricted import ensure_runner_image, run_restricted_pytest
 from edgecase_forge.llm.base import LLMProvider
@@ -47,6 +48,7 @@ def run_flashcart_suite(
     resume_dir: Path | None = None,
     case_ids: Sequence[str] | None = None,
     execution_backend: str = "local",
+    agent: str = "baseline",
 ) -> Path:
     """Run the frozen baseline and preserve clean-versus-mutant node evidence."""
     selected_cases = validate_cases(case_ids)
@@ -56,6 +58,7 @@ def run_flashcart_suite(
         raise ValueError("request_delay_seconds cannot be negative")
     if execution_backend not in {"local", "docker"}:
         raise ValueError("execution_backend must be 'local' or 'docker'")
+    scanner = _build_scanner(agent, provider)
     if execution_backend == "docker":
         ensure_runner_image()
 
@@ -67,6 +70,7 @@ def run_flashcart_suite(
         source_hashes=source_hashes,
         manifest_sha256=manifest_sha256,
         execution_backend=execution_backend,
+        agent_config=scanner.experiment_config,
     )
     if resume_dir is None:
         suite_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -93,7 +97,6 @@ def run_flashcart_suite(
             )
         event_name = "suite_resumed"
 
-    scanner = BaselineScanner(provider)
     progress_path = suite_dir / "case-evaluations.jsonl"
     evaluations = read_progress(
         progress_path,
@@ -136,6 +139,7 @@ def run_flashcart_suite(
                 repetitions=repetitions,
                 selected_cases=selected_cases,
                 evaluations=evaluations,
+                agent_config=scanner.experiment_config,
             )
             if request_delay_seconds:
                 time.sleep(request_delay_seconds)
@@ -492,6 +496,7 @@ def _write_summary(
     repetitions: int,
     selected_cases: tuple[str, ...],
     evaluations: list[dict],
+    agent_config: dict[str, str],
 ) -> None:
     mutants = [item for item in evaluations if item["case_id"] != "C00"]
     selected_mutants = tuple(case for case in selected_cases if case != "C00")
@@ -565,6 +570,7 @@ def _write_summary(
         "official_score_blockers": blockers,
         "provider": provider.name,
         "model": provider.model,
+        "agent": agent_config,
         "repetitions": repetitions,
         "selected_cases": list(selected_cases),
         "cases": evaluations,
@@ -623,3 +629,14 @@ def _write_summary(
         "note": "Candidate kills require independent invariant adjudication before confirmation.",
     }
     write_json_atomic(suite_dir / "suite-summary.json", summary)
+
+
+def _build_scanner(agent: str, provider: LLMProvider) -> BaselineScanner:
+    scanners = {
+        "baseline": BaselineScanner,
+        "contract": ContractScanner,
+    }
+    scanner_type = scanners.get(agent)
+    if scanner_type is None:
+        raise ValueError("agent must be 'baseline' or 'contract'")
+    return scanner_type(provider)

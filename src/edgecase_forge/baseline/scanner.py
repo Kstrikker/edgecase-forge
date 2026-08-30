@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import time
 import uuid
 from dataclasses import asdict
@@ -16,8 +17,22 @@ from .repository import collect_repository_context
 
 
 class BaselineScanner:
+    agent_name = "baseline"
+    agent_version = BASELINE_PROMPT_VERSION
+    system_prompt = BASELINE_SYSTEM_PROMPT
+    response_model = BaselineAnalysis
+
     def __init__(self, provider: LLMProvider) -> None:
         self.provider = provider
+
+    @property
+    def experiment_config(self) -> dict:
+        return {
+            "agent": self.agent_name,
+            "agent_version": self.agent_version,
+            "prompt_sha256": self._prompt_sha256(),
+            "implementation": f"{type(self).__module__}.{type(self).__qualname__}",
+        }
 
     def scan(
         self,
@@ -33,13 +48,15 @@ class BaselineScanner:
         tests_dir = run_dir / "generated_tests"
         tests_dir.mkdir(parents=True, exist_ok=False)
 
-        context = collect_repository_context(repo)
+        context, context_artifacts = self._prepare_repository(repo)
         messages = [
-            Message(role="system", content=BASELINE_SYSTEM_PROMPT),
+            Message(role="system", content=self.system_prompt),
             Message(role="user", content=f"Repository contents:\n{context}"),
         ]
-        analysis_raw, llm_result = self.provider.generate_json(messages, BaselineAnalysis)
-        analysis = BaselineAnalysis.model_validate(analysis_raw)
+        analysis_raw, llm_result = self.provider.generate_json(
+            messages, self.response_model
+        )
+        analysis = self.response_model.model_validate(analysis_raw)
 
         generated_path: Path | None = None
         execution = ExecutionResult(False, None, "", "")
@@ -81,11 +98,13 @@ class BaselineScanner:
             "finish_reasons": list(llm_result.accounting.finish_reasons),
             "execution": execution_payload(execution),
         }
+        report.update(self._report_extension(analysis, context_artifacts))
         metadata = {
             "run_id": run_id,
             "created_at": datetime.now(UTC).isoformat(),
-            "agent_version": BASELINE_PROMPT_VERSION,
-            "prompt_sha256": prompt_sha256(),
+            "agent": self.agent_name,
+            "agent_version": self.agent_version,
+            "prompt_sha256": self._prompt_sha256(),
             "provider": llm_result.provider,
             "model": llm_result.model,
             "temperature": 0.0,
@@ -95,9 +114,11 @@ class BaselineScanner:
         trajectory = [
             {
                 "event": "model_request",
-                "prompt_version": BASELINE_PROMPT_VERSION,
-                "prompt_sha256": prompt_sha256(),
+                "agent": self.agent_name,
+                "prompt_version": self.agent_version,
+                "prompt_sha256": self._prompt_sha256(),
                 "repository_context_chars": len(context),
+                **self._context_trajectory(context_artifacts),
             },
             {
                 "event": "model_response",
@@ -117,6 +138,7 @@ class BaselineScanner:
 
         _write_json(run_dir / "report.json", report)
         _write_json(run_dir / "run-metadata.json", metadata)
+        self._write_context_artifacts(run_dir, context_artifacts)
         with (run_dir / "trajectory.jsonl").open("w", encoding="utf-8") as handle:
             for event in trajectory:
                 handle.write(json.dumps(event, ensure_ascii=False) + "\n")
@@ -125,6 +147,25 @@ class BaselineScanner:
             encoding="utf-8",
         )
         return run_dir
+
+    def _prepare_repository(self, repo: Path) -> tuple[str, dict]:
+        return collect_repository_context(repo), {}
+
+    def _prompt_sha256(self) -> str:
+        if self.agent_name == "baseline":
+            return prompt_sha256()
+        return hashlib.sha256(self.system_prompt.encode("utf-8")).hexdigest()
+
+    def _report_extension(self, analysis: BaselineAnalysis, artifacts: dict) -> dict:
+        del analysis, artifacts
+        return {}
+
+    def _context_trajectory(self, artifacts: dict) -> dict:
+        del artifacts
+        return {}
+
+    def _write_context_artifacts(self, run_dir: Path, artifacts: dict) -> None:
+        del run_dir, artifacts
 
 
 def _new_run_id() -> str:

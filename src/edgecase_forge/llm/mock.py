@@ -31,6 +31,8 @@ class MockProvider:
             "findings": [],
             "generated_test_code": "",
         }
+        if "invariants" in response_model.model_fields:
+            payload["invariants"] = []
         content = json.dumps(payload)
         return response_model.model_validate(payload), LLMResult(
             content=content,
