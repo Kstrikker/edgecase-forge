@@ -16,3 +16,4 @@ trajectories/**/*.json
 
 # Generated benchmark artifacts
 results/
+edgecase-results/
