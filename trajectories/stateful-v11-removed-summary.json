@@ -1,0 +1,151 @@
+{
+  "suite_id": "20260830T220644Z",
+  "benchmark_version": "flashcart-v1.1.0",
+  "status": "complete",
+  "official_score_eligible": false,
+  "official_score_blockers": [
+    "subset_selection"
+  ],
+  "provider": "gemini",
+  "model": "gemini-3.5-flash",
+  "agent": {
+    "agent": "stateful_attacker",
+    "agent_version": "stateful-v1.1",
+    "prompt_sha256": "8b861f062bb274a15d0dc67684dbe477cd85da6c637a1fb1afd6002cc0a79cb7",
+    "implementation": "edgecase_forge.stateful.scanner.StatefulScanner"
+  },
+  "repetitions": 1,
+  "selected_cases": [
+    "C00",
+    "M06"
+  ],
+  "cases": [
+    {
+      "evaluation_schema_version": "case-evaluation-v2",
+      "repetition": 1,
+      "case_id": "C00",
+      "source_sha256": "c997760e5deab192a273736a5af1eda3fb594827750f5ae7cb089961cc8d7e57",
+      "agent_repo_sha256": "589c5cbb34ae6d4cc02feafb09669c03b9b7ccc57480147b3f180917dc6824f5",
+      "test_sha256": "4a57a4b1dd698ec8e634f2b1ea9181dae1eda324810ff218ba2c0faad64be013",
+      "run_directory": "agent-runs/run-01/C00/20260830T220645Z-909857fa",
+      "differential_evidence": "agent-runs/run-01/C00/20260830T220645Z-909857fa/differential/differential.json",
+      "differential_sha256": "c79c10e60a6a84e2e7bb7ffb2b56f306c3ff3335c9f3bdb3db93fa1c4f4cd841",
+      "run_artifacts_sha256": "f42e6c65ca5a17e9710b9cdb97e87d9e008c07fb037916e48b270bb1c347876d",
+      "status": "completed",
+      "reported_findings": 1,
+      "integrity_error_count": 0,
+      "invalid_generated_test_count": 0,
+      "evaluator_infrastructure_error_count": 0,
+      "test_generated": true,
+      "passes_clean": false,
+      "fails_mutant": false,
+      "candidate_kill": false,
+      "candidate_nodes": 0,
+      "invalid_nodes": 0,
+      "confirmed_kill": false,
+      "requires_invariant_adjudication": false,
+      "clean_assertion_failure": true,
+      "clean_assertion_failure_nodes": 1,
+      "input_tokens": 5034,
+      "output_tokens": 910,
+      "model_latency_seconds": 24.375,
+      "semantic_attempts": 1,
+      "transport_attempts": 1,
+      "repair_used": false,
+      "request_ids": [],
+      "finish_reasons": [
+        "stop"
+      ],
+      "runtime_seconds": 24.407,
+      "execution_runtime_seconds": 2.484
+    },
+    {
+      "evaluation_schema_version": "case-evaluation-v2",
+      "repetition": 1,
+      "case_id": "M06",
+      "source_sha256": "3a6ff5d1d3eef0205cdc782396aae6d68c32defc32c9fc08344996b7b99563a0",
+      "agent_repo_sha256": "7f5502297e04715f2848f6dcabe5cd5b897ad8aa1ee07e1e5a1afbc8daa03635",
+      "run_directory": null,
+      "differential_evidence": null,
+      "differential_sha256": null,
+      "run_artifacts_sha256": null,
+      "status": "model_output_error",
+      "reported_findings": 0,
+      "integrity_error_count": 0,
+      "invalid_generated_test_count": 0,
+      "evaluator_infrastructure_error_count": 0,
+      "error_type": "ResponseValidationError",
+      "error": ": Value error, Numeric boundary finding must prove unchanged stock and empty orders and charges after both invalid requests",
+      "model_response_sha256": [
+        "994b500644cedee12808f292e385dfd2fba8e8b17f679f0b28a853a593453a74",
+        "116aa77a0c59fe78e75bad8eb7facf4bcdbd2f1f6432e6d569f3f75cfc72e255"
+      ],
+      "model_response_excerpts": [
+        "{\n  \"summary\": \"The FlashCart API lacks validation on the quantity field in order requests, allowing zero or negative quantities to bypass checks, corrupt inventory state, and create invalid orders.\",\n  \"invariants\": [\n    {\n      \"invariant_id\": \"INV-01\",\n      \"endpoint\": \"POST /orders\",\n      \"category\": \"validation\",\n      \"invariant\": \"Order quantity must be a positive integer greater than zero to prevent inventory corruption and invalid charges.\",\n      \"evidence\": [\n        \"OrderRequest defines quantity as a plain int without minimum constraints.\",\n        \"_reserve_inventory subtracts quantity directly from STATE.stock without validating that quantity is positive.\"\n      ],\n      \"oracle\": \"Submitting zero or negative quantities must be rejected with HTTP 422, leaving stock, orders, and payment charges unchanged.\"\n    }\n  ],\n  \"findings\": [\n    {\n      \"title\": \"Missing Numeric Request Boundary on Order Quantity\",\n      \"severity\": \"critical\",\n      \"endpoint\": \"POST /orders\",\n      \"claim\": \"Submitting an order with zero or negative quantity is accepted, which corrupts the inventory stock level and creates invalid negative-value orders.\",\n      \"evidence\": [\n        \"OrderRequest quantity field has no validation constraints.\",\n        \"Negative quantities increase STATE.stock during reservation: STATE.stock -= quantity.\"\n      ],\n      \"test_file\": \"test_orders.py\",\n      \"test_name\": \"test_missing_numeric_request_boundary\",\n      \"reproduced\": false,\n      \"invariant_id\": \"INV-01\"\n    }\n  ],\n  \"generated_test_code\": \"import pytest\\nfrom fastapi.testclient import TestClient\\nfrom main import app, STATE, reset_state\\n\\n@pytest.fixture(autouse=True)\\ndef setup_and_teardown():\\n    reset_state()\\n    yield\\n    reset_state()\\n\\ndef test_missing_numeric_request_boundary():\\n    client = TestClient(app)\\n    initial_stock = STATE.stock\\n    initial_orders_count = len(STATE.orders)\\n    initial_charges_count = len(STATE.payment.charges)\\n\\n    # Test zero quantity\\n    headers_zero = {\\n        \\\"Authorization\\\": \\\"Bearer buyer-a\\\",\\n        \\\"Idempotency-Key\\\": \\\"key-zero-qty\\\"\\n    }\\n    response_zero = client.post(\\n        \\\"/orders\\\",\\n        json={\\\"product_id\\\": 1, \\\"quantity\\\": 0},\\n        headers=headers_zero\\n    )\\n\\n    # Test negative quantity\\n    headers_neg = {\\n        \\\"Authorization\\\": \\\"Bearer buyer-a\\\",\\n        \\\"Idempotency-Key\\\": \\\"key-neg-qty\\\"\\n    }\\n    response_neg = client.post(\\n        \\\"/orders\\\",\\n        json={\\\"product_id\\\": 1, \\\"quantity\\\": -5},\\n        headers=headers_neg\\n    )\\n\\n    # Assertions for boundary enforcement\\n    assert response_zero.status_code == 422, \\\"Zero quantity should be rejected with 422\\\"\\n    assert response_neg.status_code == 422, \\\"Negative quantity should be rejected with 422\\\"\\n\\n    # Assertions for state integrity\\n    assert STATE.stock == initial_stock, \\\"Stock must remain unchanged after invalid requests\\\"\\n    assert len(STATE.orders) == initial_orders_count, \\\"No orders should be created for invalid requests\\\"\\n    assert len(STATE.payment.charges) == initial_charges_count, \\\"No charges should be processed for invalid requests\\\"\\n\"\n}",
+        "{\n  \"summary\": \"The FlashCart API lacks validation on the quantity field in order requests, allowing zero or negative quantities to bypass checks, corrupt inventory state, and create invalid orders.\",\n  \"invariants\": [\n    {\n      \"invariant_id\": \"INV-01\",\n      \"endpoint\": \"POST /orders\",\n      \"category\": \"validation\",\n      \"invariant\": \"Order quantity must be a positive integer greater than zero to prevent inventory corruption and invalid charges.\",\n      \"evidence\": [\n        \"OrderRequest defines quantity as a plain int without minimum constraints.\",\n        \"_reserve_inventory subtracts quantity directly from STATE.stock without validating that quantity is positive.\"\n      ],\n      \"oracle\": \"Submitting zero or negative quantities must be rejected with HTTP 422, leaving stock, orders, and payment charges unchanged.\"\n    }\n  ],\n  \"findings\": [\n    {\n      \"title\": \"Missing Numeric Request Boundary on Order Quantity\",\n      \"severity\": \"critical\",\n      \"endpoint\": \"POST /orders\",\n      \"claim\": \"Submitting an order with zero or negative quantity is accepted, which corrupts the inventory stock level and creates invalid negative-value orders.\",\n      \"evidence\": [\n        \"OrderRequest quantity field has no validation constraints.\",\n        \"Negative quantities increase STATE.stock during reservation: STATE.stock -= quantity.\"\n      ],\n      \"test_file\": \"test_orders.py\",\n      \"test_name\": \"test_missing_numeric_request_boundary\",\n      \"reproduced\": false,\n      \"invariant_id\": \"INV-01\"\n    }\n  ],\n  \"generated_test_code\": \"import pytest\\nfrom fastapi.testclient import TestClient\\nfrom main import app, STATE, reset_state\\n\\n@pytest.fixture(autouse=True)\\ndef setup_and_teardown():\\n    reset_state()\\n    yield\\n    reset_state()\\n\\ndef test_missing_numeric_request_boundary():\\n    client = TestClient(app)\\n    initial_stock = STATE.stock\\n    initial_orders_count = len(STATE.orders)\\n    initial_charges_count = len(STATE.payment.charges)\\n\\n    # Test zero quantity\\n    headers_zero = {\\n        \\\"Authorization\\\": \\\"Bearer buyer-a\\\",\\n        \\\"Idempotency-Key\\\": \\\"key-zero-qty\\\"\\n    }\\n    response_zero = client.post(\\n        \\\"/orders\\\",\\n        json={\\\"product_id\\\": 1, \\\"quantity\\\": 0},\\n        headers=headers_zero\\n    )\\n\\n    # Test negative quantity\\n    headers_neg = {\\n        \\\"Authorization\\\": \\\"Bearer buyer-a\\\",\\n        \\\"Idempotency-Key\\\": \\\"key-neg-qty\\\"\\n    }\\n    response_neg = client.post(\\n        \\\"/orders\\\",\\n        json={\\\"product_id\\\": 1, \\\"quantity\\\": -5},\\n        headers=headers_neg\\n    )\\n\\n    # Assertions for state integrity (primary oracle)\\n    assert STATE.stock == initial_stock, \\\"Stock must remain unchanged after invalid requests\\\"\\n    assert len(STATE.orders) == initial_orders_count, \\\"No orders should be created for invalid requests\\\"\\n    assert len(STATE.payment.charges) == initial_charges_count, \\\"No charges should be processed for invalid requests\\\"\\n\\n    # Assertions for boundary enforcement (secondary status)\\n    assert response_zero.status_code == 422, \\\"Zero quantity should be rejected with 422\\\"\\n    assert response_neg.status_code == 422, \\\"Negative quantity should be rejected with 422\\\"\\n\"\n}"
+      ],
+      "test_generated": false,
+      "passes_clean": false,
+      "fails_mutant": false,
+      "candidate_kill": false,
+      "candidate_nodes": 0,
+      "invalid_nodes": 0,
+      "confirmed_kill": false,
+      "requires_invariant_adjudication": false,
+      "clean_assertion_failure": false,
+      "clean_assertion_failure_nodes": 0,
+      "input_tokens": 11396,
+      "output_tokens": 1682,
+      "model_latency_seconds": 21.984,
+      "semantic_attempts": 2,
+      "transport_attempts": 2,
+      "repair_used": true,
+      "request_ids": [],
+      "finish_reasons": [
+        "stop",
+        "stop"
+      ],
+      "runtime_seconds": 21.984,
+      "execution_runtime_seconds": 0.0
+    }
+  ],
+  "candidate_kills": 0,
+  "candidate_mutation_score": 0.0,
+  "candidate_mutation_score_range": [
+    0.0,
+    0.0
+  ],
+  "repetition_scores": [
+    {
+      "repetition": 1,
+      "status": "complete",
+      "evaluated_mutants": 1,
+      "expected_mutants": 1,
+      "candidate_kills": 0,
+      "score": 0.0
+    }
+  ],
+  "confirmed_kills": 0,
+  "confirmed_mutation_score": null,
+  "clean_control_evaluations_expected": 1,
+  "clean_control_evaluations_completed": 1,
+  "clean_control_evaluations_with_claims": 1,
+  "clean_control_claims_reported": 1,
+  "clean_control_claim_frequency": 1.0,
+  "clean_control_claims_per_completed_evaluation": 1.0,
+  "evaluations_with_clean_assertion_failures": 1,
+  "clean_assertion_failure_nodes": 1,
+  "invalid_nodes": 0,
+  "model_output_errors": 1,
+  "invalid_generated_tests": 0,
+  "evaluator_infrastructure_errors": 0,
+  "input_tokens": 16430,
+  "output_tokens": 2592,
+  "model_latency_seconds": 46.359,
+  "semantic_attempts": 3,
+  "transport_attempts": 3,
+  "repair_used_evaluations": 1,
+  "runtime_seconds": 46.391,
+  "execution_runtime_seconds": 2.484,
+  "note": "Candidate kills require independent invariant adjudication before confirmation."
+}
